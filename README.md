@@ -1,2 +1,1 @@
-# marketplace
-Claude Code Marketplace
+# Claude Code Marketplace
