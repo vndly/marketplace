@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 INPUT=$(cat)
-echo "$INPUT" > /tmp/statusline_input.json
 MODEL=$(echo "$INPUT" | jq -r '.model.display_name' | sed 's/ (1M context)//')
 CONTEXT_SIZE=$(echo "$INPUT" | jq -r '.context_window.context_window_size')
 USAGE=$(echo "$INPUT" | jq '.context_window.current_usage')
