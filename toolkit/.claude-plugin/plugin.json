@@ -1,0 +1,10 @@
+{
+  "name": "toolkit",
+  "description": "Vndly Claude Plugin",
+  "version": "1.0.1",
+  "author": {
+    "name": "Mauricio Togneri",
+    "email": "mauricio.togneri@gmail.com"
+  },
+  "repository": "https://github.com/vndly/marketplace"
+}
