@@ -15,7 +15,8 @@
       "Skill",
       "Task",
       "Agent",
-      "LSP"
+      "LSP",
+      "mcp__ide__getDiagnostics"
     ]
   },
   "hooks": {
