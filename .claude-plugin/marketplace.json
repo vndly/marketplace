@@ -1,0 +1,13 @@
+{
+  "name": "vndly",
+  "description": "A marketplace for Claude Code Plugins",
+  "plugins": [
+    {
+      "name": "common",
+      "description": "Common Claude Plugins",
+      "version": "1.0.0",
+      "source": "./common",
+      "repository": "https://github.com/vndly/marketplace"
+    }
+  ]
+}
