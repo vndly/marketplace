@@ -8,9 +8,11 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
 
-Ask the questions one at a time. For each question:
-- Provide a set of possible answers to choose from
-- Provide your recommended answer and justify it
-- Use the AskUserQuestion tool to let me choose between the options or provide my own answer
+Ask questions one at a time. For each question:
+- Lead with your recommended answer and a brief justification
+- Provide 2-4 concrete options (the user can always write in their own)
+- Use the AskUserQuestion tool so I can select or override
+
+Track decisions as you go — if a later answer invalidates an earlier one, flag the conflict and revisit.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
