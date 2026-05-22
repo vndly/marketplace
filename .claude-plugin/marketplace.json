@@ -1,6 +1,10 @@
 {
   "name": "vndly",
   "description": "A marketplace for Claude Code Plugins",
+  "owner": {
+    "name": "vndly",
+    "email": "vndly@email.com"
+  },
   "plugins": [
     {
       "name": "common",
