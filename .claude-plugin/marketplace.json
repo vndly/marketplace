@@ -9,7 +9,7 @@
     {
       "name": "common",
       "description": "Common Claude Plugins",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./common",
       "repository": "https://github.com/vndly/marketplace"
     }
