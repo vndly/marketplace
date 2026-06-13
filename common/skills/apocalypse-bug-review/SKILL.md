@@ -38,7 +38,7 @@ Include:
 
 - Application, library, service, and command-line source.
 - First-party scripts, migrations, build logic, CI workflows, infrastructure definitions, and configuration that can affect shipped behavior, releases, deployments, operations, or data.
-- Tests, documentation, schemas, and interface definitions as evidence of intended contracts. Report a defect in one only when it directly causes incorrect shipped behavior, asserts an incorrect authoritative contract, or demonstrably conceals an established shipped defect. Missing coverage or unclear documentation alone is not a finding.
+- Tests, documentation, schemas, and interface definitions as evidence of intended contracts. Report a defect in such an artifact only when it directly causes incorrect shipped behavior, asserts an incorrect authoritative contract, or demonstrably conceals an established shipped defect. Missing coverage or unclear documentation alone is not a finding.
 - Checked-in generated artifacts that are shipped, deployed, consumed directly, or used to validate behavior. Attribute the finding to the first-party generator or source configuration when that is the root cause.
 
 Exclude:
