@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Apocalypse Bug Review
 
-Use this skill for an unusually strict, exhaustive hunt for defects: bugs, correctness errors, inconsistencies, edge-case failures, and security flaws that can cause incorrect application, build,release, deployment, migration, operational, security, or data behavior.
+Use this skill for an unusually strict, exhaustive hunt for defects: bugs, correctness errors, inconsistencies, edge-case failures, and security flaws that can cause incorrect application, build, release, deployment, migration, operational, security, or data behavior.
 
 Be adversarial about behavior. Read the code looking for the input, sequence, state, environment, or interleaving that makes it fail. Do not spend effort on abstractions, naming, file size, or style unless they directly cause incorrect behavior.
 
