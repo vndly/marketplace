@@ -1,6 +1,6 @@
 ---
 name: apocalypse-bug-review
-description: Run an extremely strict, exhaustive whole-codebase defect hunt for bugs, correctness errors, inconsistencies, security flaws, and edge-case failures.
+description: Run an extremely strict, exhaustive defect hunt over a selectable scope (whole codebase or a diff/path subset) for bugs, correctness errors, inconsistencies, security flaws, and edge-case failures.
 disable-model-invocation: true
 ---
 
@@ -24,7 +24,18 @@ Be adversarial about behavior. Read the code looking for the input, sequence, st
 
 ## Scope
 
-Audit the entire first-party codebase, not only a diff or recently changed files.
+Audit the user-selected scope, determined at the start of the run (see Phase 0, step 2). The scope is one of:
+
+- **Whole codebase:** every included first-party file.
+- **Branch diff:** first-party files changed between the current branch and a base ref (default `develop`), computed from the merge-base diff.
+- **Uncommitted changes:** tracked modifications plus untracked first-party files in the working tree.
+- **Unpushed commits:** changes in local commits ahead of the upstream branch.
+- **Session changes:** first-party files modified during the current chat session.
+- **Named paths:** the files, directories, or globs the user provides.
+
+The selected scope defines the **seed set** of files. For every scope except *Whole codebase*, the **included set** is the seed set plus its direct first-party dependents — callers of changed functions and consumers of changed types, schemas, or configuration — expanded one hop out, so defects the change introduces in other files remain in scope. Meaningful flows that traverse the seed set are traced end to end even where they extend beyond one hop. For *Whole codebase*, the included set is every included first-party file and the meaningful-flow inventory is every meaningful flow.
+
+The initial worktree snapshot and every preservation guarantee always cover the entire worktree regardless of scope: scope narrows only what is inspected, never what is preserved. The include and exclude rules below act as filters within the included set, the coverage invariants apply to the included set, and for non-whole scopes the meaningful-flow inventory consists of the flows that traverse the seed set.
 
 For this audit:
 
@@ -103,12 +114,19 @@ Use parallel agents when they are available and permitted. Agents may inspect fi
 
 ### Phase 0 - Orient and Inventory
 
-1. As the first audit workflow action, capture the initial worktree snapshot specified in Operating Rules before substantive inspection or verification.
-2. Read project instructions, documentation, architecture material, schemas, and key contracts.
-3. Build a path-level inventory of included first-party files, with an inspected or skipped status for every included path, an exact included-file count, and explicit excluded paths or categories, grouped into meaningful modules and flows. Record deterministic selection rules and commands, exact counts per module, and a manifest digest so the included inventory can be reproduced and verified against the initial worktree snapshot.
-4. Assign stable audit-local IDs to meaningful flows and record exact total, traced, and skipped flow counts. For each flow, record its entry point, material result or side effect, and status.
-5. Identify high-risk surfaces: external input, authentication and authorization, persistence, migrations, concurrency, error handling, resource ownership, security sinks, release logic, and deployment configuration.
-6. Record exclusions, ambiguous ownership, and files or flows that cannot be inspected.
+1. As the first audit workflow action, capture the initial worktree snapshot specified in Operating Rules before substantive inspection or verification. The snapshot always covers the entire worktree, independent of the scope selected next.
+2. Select the audit scope. If the invocation already specifies a scope, use it without asking. Otherwise, ask the user with `AskUserQuestion`:
+   - A primary question with the options `Whole codebase`, `Diff vs a branch`, `Local changes`, and `Named path(s)`.
+   - If `Diff vs a branch`, ask a follow-up question with the options `develop` (default), `main`, and a user-supplied ref via `Other`.
+   - If `Local changes`, ask a follow-up question with the options `uncommitted changes including untracked`, `unpushed commits`, and `this chat session's changes`.
+   - If `Named path(s)`, prompt in prose for the paths or globs, since a fixed option list cannot capture free-form paths.
+   If no interactive response is available, default to `Whole codebase`. Record the chosen scope.
+3. Resolve the scope to the seed set with explicit, recorded commands: the merge-base diff `git diff <base>...HEAD --name-only` for a branch diff; `git diff HEAD --name-only` plus untracked files from `git status --porcelain` for uncommitted changes; `git diff @{upstream}..HEAD --name-only` for unpushed commits, falling back to whole codebase when no upstream is configured; the files edited during this session for session changes; or the literal paths for named paths. For every scope except whole codebase, expand the seed set one hop to the included set by adding the direct first-party dependents of the seed, and record both the seed set and the expansion.
+4. Read project instructions, documentation, architecture material, schemas, and key contracts.
+5. Build a path-level inventory of included first-party files, with an inspected or skipped status for every included path, an exact included-file count, and explicit excluded paths or categories, grouped into meaningful modules and flows. Record deterministic selection rules and commands, exact counts per module, and a manifest digest so the included inventory can be reproduced and verified against the initial worktree snapshot.
+6. Assign stable audit-local IDs to meaningful flows and record exact total, traced, and skipped flow counts. For each flow, record its entry point, material result or side effect, and status.
+7. Identify high-risk surfaces: external input, authentication and authorization, persistence, migrations, concurrency, error handling, resource ownership, security sinks, release logic, and deployment configuration.
+8. Record exclusions, ambiguous ownership, and files or flows that cannot be inspected.
 
 ### Phase 1 - Discover
 
@@ -149,7 +167,7 @@ Repeat additional discovery passes until one produces no new candidates; designa
 
 Assign one audit status:
 
-- **Complete:** the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, or was refuted; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The report must contain enough inventory, flow, and candidate-disposition evidence to reproduce every exact count.
+- **Complete:** within the selected scope, the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, or was refuted; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The report must contain enough inventory, flow, and candidate-disposition evidence to reproduce every exact count.
 - **Partial:** any Complete condition was not met. State each unmet condition and do not claim the audit was exhaustive or complete.
 
 ## Verification and Ranking
@@ -233,7 +251,7 @@ Populate the final report sections as follows:
 
 - **Audit Status:** Complete | Partial, including unmet completion conditions for a Partial audit.
 - **Initial Worktree Snapshot:** repository path, branch, commit, initial worktree state, a digest of the external snapshot manifest, captured and excluded ignored-path categories, approval status for replacing any pre-existing report, and the result of the final comparison against that snapshot.
-- **Audit Coverage:** exact included, inspected, and skipped first-party file counts; excluded paths or categories and their counts when practical; inspected modules; deterministic inventory selection rules and commands, exact counts per module, the inventory-manifest digest, and every skipped included path; and a table of every meaningful-flow ID, entry point, material result or side effect, and status, with exact total, traced, and skipped flow counts. Confirm both coverage accounting invariants and summarize coverage of every taxonomy category.
+- **Audit Coverage:** the selected scope and how it was resolved — the base ref, paths, or git commands used, the seed set, and the one-hop dependent expansion for non-whole scopes; exact included, inspected, and skipped first-party file counts; excluded paths or categories and their counts when practical; inspected modules; deterministic inventory selection rules and commands, exact counts per module, the inventory-manifest digest, and every skipped included path; and a table of every meaningful-flow ID, entry point, material result or side effect, and status, with exact total, traced, and skipped flow counts. Confirm both coverage accounting invariants and summarize coverage of every taxonomy category.
 - **Candidate Dispositions:** a compact table containing every candidate ID, primary location, category, disposition, and resulting finding ID or concise disposition reason. Include exact counts for findings, merged, refuted, and unverified, and confirm both the accounting invariant and that the reported-finding count equals the findings count.
 - **Verification Performed:** tests, commands, reproductions, and refutation work.
 - **Exclusions and Limitations:** skipped areas, unverified candidates, unavailable tooling, blocked verification, and unresolved uncertainty.
