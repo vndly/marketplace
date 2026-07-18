@@ -68,10 +68,11 @@ echo "Downloading MP3 to: $OUT_DIR" >&2
 # -x               extract audio
 # --audio-format   convert to mp3
 # --audio-quality 0  best VBR quality
+# --quiet --no-warnings  keep stdout to just the --print path (status/warnings -> stderr)
 # --print after_move:filepath  emit the final file path on stdout
 yt-dlp \
   -x --audio-format mp3 --audio-quality 0 \
-  --no-progress \
+  --quiet --no-warnings --no-progress \
   --print after_move:filepath \
   -P "$OUT_DIR" \
   -o "%(title)s.%(ext)s" \

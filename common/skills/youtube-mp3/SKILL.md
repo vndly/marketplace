@@ -11,7 +11,7 @@ which also installs any missing dependencies.
 ## How to run
 
 ```bash
-bash ~/.claude/skills/youtube-mp3/download-audio.sh "<VIDEO_URL>" [OUTPUT_DIR]
+download-audio.sh "<VIDEO_URL>" [OUTPUT_DIR]
 ```
 
 - `<VIDEO_URL>` — required. The YouTube (or other yt-dlp-supported) URL.
