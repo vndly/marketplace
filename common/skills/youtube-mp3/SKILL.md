@@ -14,6 +14,9 @@ which also installs any missing dependencies.
 download-audio.sh "<VIDEO_URL>" [OUTPUT_DIR]
 ```
 
+> If `download-audio.sh` isn't found on PATH (e.g. just after a plugin update), it's
+> bundled in this plugin's `bin/` directory — run it from there.
+
 - `<VIDEO_URL>` — required. The YouTube (or other yt-dlp-supported) URL.
 - `[OUTPUT_DIR]` — optional. Defaults to `~/Downloads`.
 
