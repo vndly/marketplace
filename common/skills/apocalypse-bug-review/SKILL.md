@@ -14,6 +14,7 @@ Be adversarial about behavior. Read the code looking for the input, sequence, st
 
 - Assume behavior is unverified until its contracts and failure paths have been inspected.
 - Cast a wide net during discovery, but report only defects whose reachable failure path and incorrect result survive verification. Validate each finding twice: first establish its reachability and incorrect result, then perform a separate refutation attempt that tries to disprove the suspected defect.
+- For change-based scopes, report only defects the reviewed changes introduce. A candidate whose incorrect behavior reproduces unchanged in the baseline state is pre-existing: record its disposition and do not report it as a finding, however severe it is.
 - Treat the worktree as read-only by default. Do not fix product code or configuration.
 - Perform verification only against local, isolated, or explicitly approved test environments.
 - Never deploy, mutate production data, run destructive migrations, exploit live systems, expose secrets, or contact external services without explicit user approval.
@@ -24,10 +25,10 @@ Be adversarial about behavior. Read the code looking for the input, sequence, st
 
 ## Scope
 
-Audit the user-selected scope, determined at the start of the run (see Phase 0, step 2). The scope is one of:
+Audit the user-selected scope, determined at the start of the run (see Phase 0, step 3). The scope is one of:
 
 - **Whole codebase:** every included first-party file.
-- **Branch diff:** first-party files changed between the current branch and a base ref (default `develop`), computed from the merge-base diff.
+- **Branch diff:** first-party files changed between the current branch and a base ref, computed from the merge-base diff. The base ref is detected from the current branch's divergence point (see Phase 0, step 2) and can be overridden by the user.
 - **Uncommitted changes:** tracked modifications plus untracked first-party files in the working tree.
 - **Unpushed commits:** changes in local commits ahead of the upstream branch.
 - **Session changes:** first-party files modified during the current chat session.
@@ -36,6 +37,15 @@ Audit the user-selected scope, determined at the start of the run (see Phase 0, 
 The selected scope defines the **seed set** of files. For every scope except *Whole codebase*, the **included set** is the seed set plus its direct first-party dependents — callers of changed functions and consumers of changed types, schemas, or configuration — expanded one hop out, so defects the change introduces in other files remain in scope. Meaningful flows that traverse the seed set are traced end to end even where they extend beyond one hop. For *Whole codebase*, the included set is every included first-party file and the meaningful-flow inventory is every meaningful flow.
 
 The initial worktree snapshot and every preservation guarantee always cover the entire worktree regardless of scope: scope narrows only what is inspected, never what is preserved. The include and exclude rules below act as filters within the included set, the coverage invariants apply to the included set, and for non-whole scopes the meaningful-flow inventory consists of the flows that traverse the seed set.
+
+*Branch diff*, *Uncommitted changes*, *Unpushed commits*, and *Session changes* are **change-based scopes**. Each has a **baseline state**, the committed or worktree state the reviewed changes are measured against:
+
+- **Branch diff:** the merge-base commit of the base ref and `HEAD`.
+- **Uncommitted changes:** `HEAD`.
+- **Unpushed commits:** the upstream commit `@{upstream}`.
+- **Session changes:** the worktree state at the start of the session. When it cannot be reconstructed, use the closest available baseline, normally `HEAD`, and record the substitution under **Exclusions and Limitations**.
+
+For a change-based scope, report only **introduced defects**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. *Whole codebase* and *Named paths* have no baseline: every defect established within their included set is reportable.
 
 For this audit:
 
@@ -68,8 +78,9 @@ Count each included file path and each meaningful flow exactly once. Maintain th
 ## Candidate Versus Finding
 
 - A **candidate** is a suspicious pattern that requires investigation.
-- A **finding** is a candidate whose code-path reachability and incorrect result are established under a concrete or plausible stated trigger. Every verified root cause must be represented in `BUG_FINDINGS.md`; merge candidates that share the same root cause into one finding.
+- A **finding** is a candidate whose code-path reachability and incorrect result are established under a concrete or plausible stated trigger and that, in a change-based scope, the reviewed changes introduce. Every such verified root cause must be represented in `BUG_FINDINGS.md`; merge candidates that share the same root cause into one finding.
 - A candidate is **refuted** when a guard, invariant, caller contract, unreachable state, or other evidence prevents the suspected incorrect behavior.
+- A candidate is **pre-existing** when its defect path is established but the same incorrect behavior reproduces in the baseline state of a change-based scope, so the reviewed changes did not introduce it.
 - A candidate is **unverified** when verification is blocked or cannot establish the defect path. Do not report it as a finding; record the location, suspected risk, blocker, and unresolved question under **Exclusions and Limitations**.
 
 Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient candidate ledger in memory or outside the repository. For each candidate, record its ID, location, taxonomy category, suspected trigger and failure path, verification evidence, and final disposition:
@@ -77,9 +88,10 @@ Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient 
 - **Finding:** became one unique reported finding.
 - **Merged:** shares a root cause with another candidate and maps to that candidate's finding.
 - **Refuted:** evidence disproved the suspected defect path.
+- **Pre-existing:** the defect path is real, but the reviewed changes did not introduce it.
 - **Unverified:** verification remained blocked or inconclusive.
 
-Maintain this accounting invariant, where each term counts candidates with that disposition: `total candidates = findings + merged + refuted + unverified`. The report's finding list must reconcile with this table: `reported findings = findings`, since each Finding-disposition candidate becomes exactly one reported finding while merged candidates fold into an existing finding rather than adding new ones. Preserve a compact candidate disposition table in `BUG_FINDINGS.md`; remove only the more detailed working ledger.
+Maintain this accounting invariant, where each term counts candidates with that disposition: `total candidates = findings + merged + refuted + pre-existing + unverified`. The report's finding list must reconcile with this table: `reported findings = findings`, since each Finding-disposition candidate becomes exactly one reported finding while merged candidates fold into an existing finding rather than adding new ones. Preserve a compact candidate disposition table in `BUG_FINDINGS.md`; remove only the more detailed working ledger. Pre-existing candidates appear only as rows in that table, never as findings and never described anywhere else in the report or the chat summary.
 
 ## Defect Taxonomy
 
@@ -115,18 +127,19 @@ Use parallel agents when they are available and permitted. Agents may inspect fi
 ### Phase 0 - Orient and Inventory
 
 1. As the first audit workflow action, capture the initial worktree snapshot specified in Operating Rules before substantive inspection or verification. The snapshot always covers the entire worktree, independent of the scope selected next.
-2. Select the audit scope. If the invocation already specifies a scope, use it without asking. Otherwise, ask the user with `AskUserQuestion`:
-   - A primary question with the options `Whole codebase`, `Diff vs a branch`, `Local changes`, and `Named path(s)`.
-   - If `Diff vs a branch`, ask a follow-up question with the options `develop` (default), `main`, and a user-supplied ref via `Other`.
+2. Detect the base ref for a branch diff before asking anything, using read-only git queries. Build the candidate list from the local or remote branches `develop`, `main`, and `master` that exist; the remote default branch reported by `git symbolic-ref --quiet refs/remotes/origin/HEAD`; and the configured upstream from `git rev-parse --abbrev-ref --symbolic-full-name @{upstream}` when it names a branch other than the current one. Drop the current branch from the candidates. For each remaining candidate, compute `git merge-base <candidate> HEAD` and `git rev-list --count <merge-base>..HEAD`, and discard any candidate whose merge-base is `HEAD` itself, because its diff would be empty. Select the candidate with the fewest commits ahead, which is the most recent divergence point, breaking ties in the order `develop`, `main`, `master`, remote default, upstream. Record the detected base ref, the candidates considered, and their commit counts, or record that no base ref was detected.
+3. Select the audit scope. If the invocation already specifies a scope, use it without asking. Otherwise, ask the user with `AskUserQuestion`:
+   - When a base ref was detected, ask a primary question whose first option is `Diff vs <detected base>`, followed by `Local changes`, `Whole codebase`, and `Named path(s)`. Choosing the first option needs no base follow-up; a different base ref can be supplied via `Other`.
+   - When no base ref was detected, state that in the question and ask a primary question with the options `Local changes`, `Whole codebase`, `Diff vs a branch`, and `Named path(s)`. If `Diff vs a branch`, ask a follow-up question with the options `develop`, `main`, and a user-supplied ref via `Other`.
    - If `Local changes`, ask a follow-up question with the options `uncommitted changes including untracked`, `unpushed commits`, and `this chat session's changes`.
    - If `Named path(s)`, prompt in prose for the paths or globs, since a fixed option list cannot capture free-form paths.
-   If no interactive response is available, default to `Whole codebase`. Record the chosen scope.
-3. Resolve the scope to the seed set with explicit, recorded commands: the merge-base diff `git diff <base>...HEAD --name-only` for a branch diff; `git diff HEAD --name-only` plus untracked files from `git status --porcelain` for uncommitted changes; `git diff @{upstream}..HEAD --name-only` for unpushed commits, falling back to whole codebase when no upstream is configured; the files edited during this session for session changes; or the literal paths for named paths. For every scope except whole codebase, expand the seed set one hop to the included set by adding the direct first-party dependents of the seed, and record both the seed set and the expansion.
-4. Read project instructions, documentation, architecture material, schemas, and key contracts.
-5. Build a path-level inventory of included first-party files, with an inspected or skipped status for every included path, an exact included-file count, and explicit excluded paths or categories, grouped into meaningful modules and flows. Record deterministic selection rules and commands, exact counts per module, and a manifest digest so the included inventory can be reproduced and verified against the initial worktree snapshot.
-6. Assign stable audit-local IDs to meaningful flows and record exact total, traced, and skipped flow counts. For each flow, record its entry point, material result or side effect, and status.
-7. Identify high-risk surfaces: external input, authentication and authorization, persistence, migrations, concurrency, error handling, resource ownership, security sinks, release logic, and deployment configuration.
-8. Record exclusions, ambiguous ownership, and files or flows that cannot be inspected.
+   If no interactive response is available, default to the detected branch diff, or to `Whole codebase` when no base ref was detected. Record the chosen scope.
+4. Resolve the scope to the seed set with explicit, recorded commands: the merge-base diff `git diff <base>...HEAD --name-only` for a branch diff; `git diff HEAD --name-only` plus untracked files from `git status --porcelain` for uncommitted changes; `git diff @{upstream}..HEAD --name-only` for unpushed commits, falling back to whole codebase when no upstream is configured; the files edited during this session for session changes; or the literal paths for named paths. For every scope except whole codebase, expand the seed set one hop to the included set by adding the direct first-party dependents of the seed, and record both the seed set and the expansion. For a change-based scope, also resolve and record the baseline state defined in Scope, as a commit hash where one exists.
+5. Read project instructions, documentation, architecture material, schemas, and key contracts.
+6. Build a path-level inventory of included first-party files, with an inspected or skipped status for every included path, an exact included-file count, and explicit excluded paths or categories, grouped into meaningful modules and flows. Record deterministic selection rules and commands, exact counts per module, and a manifest digest so the included inventory can be reproduced and verified against the initial worktree snapshot.
+7. Assign stable audit-local IDs to meaningful flows and record exact total, traced, and skipped flow counts. For each flow, record its entry point, material result or side effect, and status.
+8. Identify high-risk surfaces: external input, authentication and authorization, persistence, migrations, concurrency, error handling, resource ownership, security sinks, release logic, and deployment configuration.
+9. Record exclusions, ambiguous ownership, and files or flows that cannot be inspected.
 
 ### Phase 1 - Discover
 
@@ -154,8 +167,9 @@ For every candidate:
 1. Trace its real callers, data flow, guards, contracts, and state transitions.
 2. Establish a concrete or plausible trigger and the resulting incorrect behavior.
 3. Try to refute it by finding a preventing invariant, guard, contract, or unreachable condition.
-4. Where safe and useful, confirm it with an existing test, isolated scratch test, REPL, or focused command.
-5. Record evidence and assign a disposition in the candidate ledger.
+4. For a change-based scope, attribute it: decide whether the same incorrect behavior occurs in the baseline state, by reading the baseline version of every location on the defect path with `git show <baseline>:<path>` or `git diff <baseline>...HEAD -- <path>` and, where safe and useful, by exercising the baseline in the disposable verification workspace. Dispose of it as `Pre-existing` when the baseline exhibits the same incorrect behavior, and record the baseline evidence for that decision. Treat it as introduced when the baseline is correct because the defect path was unreachable, the guard was effective, or the contract held there.
+5. Where safe and useful, confirm it with an existing test, isolated scratch test, REPL, or focused command.
+6. Record evidence and assign a disposition in the candidate ledger.
 
 Verification commands run in the audited worktree must be read-only and must not be expected to rewrite files or modify external state. Run any command expected or reasonably likely to write in the disposable verification workspace. Immediately before and after each verification command or logically inseparable command batch run in the audited worktree, compare the worktree status, staged- and unstaged-diff hashes, and captured file manifest with the initial snapshot, excluding the permitted skill-owned `BUG_FINDINGS.md`. Remove only scratch artifacts created by the audit. If an unexpected change cannot be restored exactly without disturbing pre-existing work, stop that verification path and record the limitation.
 
@@ -163,11 +177,11 @@ When independent agents are available and permitted, assign the refutation pass 
 
 ### Phase 3 - Complete and Synthesize
 
-Repeat additional discovery passes until one produces no new candidates; designate that last pass as the final discovery pass. If constraints prevent another pass, mark the audit Partial. Resolve every candidate as finding, merged, refuted, or unverified. Verify the candidate accounting invariant and record exact disposition counts. Then deduplicate findings, merge shared root causes, assign final confidence and severity, and write the report. Before completion, perform a final comparison against the initial worktree snapshot, record its result and the snapshot-manifest digest in the report, preserve the compact candidate disposition table, and remove external snapshot metadata, the disposable verification workspace, and any detailed on-disk candidate ledger.
+Repeat additional discovery passes until one produces no new candidates; designate that last pass as the final discovery pass. If constraints prevent another pass, mark the audit Partial. Resolve every candidate as finding, merged, refuted, pre-existing, or unverified. Verify the candidate accounting invariant and record exact disposition counts. Then deduplicate findings, merge shared root causes, assign final confidence and severity, and write the report. Before completion, perform a final comparison against the initial worktree snapshot, record its result and the snapshot-manifest digest in the report, preserve the compact candidate disposition table, and remove external snapshot metadata, the disposable verification workspace, and any detailed on-disk candidate ledger.
 
 Assign one audit status:
 
-- **Complete:** within the selected scope, the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, or was refuted; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The report must contain enough inventory, flow, and candidate-disposition evidence to reproduce every exact count.
+- **Complete:** within the selected scope, the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, was refuted, or was dispositioned pre-existing against the baseline state; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The report must contain enough inventory, flow, and candidate-disposition evidence to reproduce every exact count.
 - **Partial:** any Complete condition was not met. State each unmet condition and do not claim the audit was exhaustive or complete.
 
 ## Verification and Ranking
@@ -194,6 +208,7 @@ Assign severity from the worst impact supported by a realistic trigger and state
 ## Output
 
 - **Report only.** Do not fix product code or configuration.
+- **Introduced defects only.** For a change-based scope, report only defects the reviewed changes introduce. Pre-existing defects appear solely as rows in the candidate disposition table, and are not described in the findings, the summary, or the chat response.
 - `BUG_FINDINGS.md` is the sole permitted persistent report artifact. At snapshot time, detect and hash any existing report, then read it to retain stable IDs for recurring root causes.
 - Do not replace a pre-existing `BUG_FINDINGS.md` without explicit user approval; approval may be supplied with the skill invocation. If approval is unavailable or denied, do not modify it, mark the audit Partial, and provide the blocked report summary in chat. Otherwise, replace its contents and write it even when no findings survive. Immediately before replacement, verify that its current hash still matches the snapshot; if it appeared or changed after the snapshot, treat it as user-authored work and obtain new approval before replacing it.
 - Do not intentionally modify any other pre-existing file. Remove only temporary artifacts created by the audit, and preserve the captured initial worktree state.
@@ -251,8 +266,8 @@ Populate the final report sections as follows:
 
 - **Audit Status:** Complete | Partial, including unmet completion conditions for a Partial audit.
 - **Initial Worktree Snapshot:** repository path, branch, commit, initial worktree state, a digest of the external snapshot manifest, captured and excluded ignored-path categories, approval status for replacing any pre-existing report, and the result of the final comparison against that snapshot.
-- **Audit Coverage:** the selected scope and how it was resolved — the base ref, paths, or git commands used, the seed set, and the one-hop dependent expansion for non-whole scopes; exact included, inspected, and skipped first-party file counts; excluded paths or categories and their counts when practical; inspected modules; deterministic inventory selection rules and commands, exact counts per module, the inventory-manifest digest, and every skipped included path; and a table of every meaningful-flow ID, entry point, material result or side effect, and status, with exact total, traced, and skipped flow counts. Confirm both coverage accounting invariants and summarize coverage of every taxonomy category.
-- **Candidate Dispositions:** a compact table containing every candidate ID, primary location, category, disposition, and resulting finding ID or concise disposition reason. Include exact counts for findings, merged, refuted, and unverified, and confirm both the accounting invariant and that the reported-finding count equals the findings count.
+- **Audit Coverage:** the selected scope and how it was resolved — the base ref with the candidates considered and how it was detected, the baseline state used for attribution, paths, or git commands used, the seed set, and the one-hop dependent expansion for non-whole scopes; exact included, inspected, and skipped first-party file counts; excluded paths or categories and their counts when practical; inspected modules; deterministic inventory selection rules and commands, exact counts per module, the inventory-manifest digest, and every skipped included path; and a table of every meaningful-flow ID, entry point, material result or side effect, and status, with exact total, traced, and skipped flow counts. Confirm both coverage accounting invariants and summarize coverage of every taxonomy category.
+- **Candidate Dispositions:** a compact table containing every candidate ID, primary location, category, disposition, and resulting finding ID or concise disposition reason. Include exact counts for findings, merged, refuted, pre-existing, and unverified, and confirm both the accounting invariant and that the reported-finding count equals the findings count.
 - **Verification Performed:** tests, commands, reproductions, and refutation work.
 - **Exclusions and Limitations:** skipped areas, unverified candidates, unavailable tooling, blocked verification, and unresolved uncertainty.
 - **Summary:** finding counts by severity, by confidence, and as a severity-confidence matrix, plus the unique affected files. Use a matrix table with severity rows; `High`, `Medium`, and `Low` confidence columns; and row and column totals.
