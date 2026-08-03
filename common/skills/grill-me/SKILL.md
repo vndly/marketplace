@@ -13,7 +13,7 @@ Ask questions one at a time. For each question:
 - Present your recommended answer first, with a brief justification, then list alternatives
 - Provide 2-4 concrete options that differ in consequence, not in wording — say what each one costs or rules out
 - Name the silent default: what we'd end up with if this were never asked
-- Use the AskUserQuestion tool so I can select or override
+- Use the AskUserQuestion tool so I can select or override; the option list is never closed — the tool's built-in `Other` always lets me answer in my own words, so don't add an `Other` option yourself
 
 When I reject your recommendation, say what that tells you about my priorities and which other decisions it changes. Propagate it before moving on.
 
