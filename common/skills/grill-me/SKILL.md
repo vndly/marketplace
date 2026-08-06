@@ -7,7 +7,7 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 First, establish what I'm optimizing for and what's fixed: the constraint I won't trade away, the budget (time, effort, complexity), and what "done" looks like. Judge every later option against those.
 
-Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. Ask the highest-fanout question first — the one whose answer constrains or invalidates the most other decisions. Cheap-to-reverse details go last, or not at all.
+Map the plan as a design tree: every decision branches into the decisions that hang off it. Ask the highest-fanout question first — the one whose answer constrains or invalidates the most other decisions. Each answer reshapes the tree: a settled decision pushes the frontier outward and unblocks the questions that depended on it. Recompute the frontier after every answer and pick again. Cheap-to-reverse details go last, or not at all.
 
 Ask questions one at a time. For each question:
 - Present your recommended answer first, with a brief justification, then list alternatives
@@ -19,6 +19,6 @@ When I reject your recommendation, say what that tells you about my priorities a
 
 Track decisions as you go — if a later answer invalidates an earlier one, flag the conflict and revisit. Restate the resolved set compactly every few decisions.
 
-Don't ask what you can answer yourself: if the codebase settles it, go read it. If two options are equivalent for my purposes, pick one and tell me.
+Never ask me for a fact you can find yourself. When a frontier question depends on one, go get it: delegate broad or open-ended lookups to a sub-agent, read narrow ones directly. Don't block on either — a pending lookup is just an unsettled prerequisite, so only the questions downstream of it wait. Ask the rest of the frontier now. If two options are equivalent for my purposes, pick one and tell me.
 
-Stop when remaining questions no longer change what gets built, then write out the resolved design and the decisions it rests on.
+Stop when remaining questions no longer change what gets built. Whatever you skip as inconsequential, say so and state the assumption it locks in — nothing gets silently assumed, but not every branch has to be interrogated either. Then write out the resolved design and the decisions it rests on, and wait for me to confirm we've reached a shared understanding before acting on any of it.
