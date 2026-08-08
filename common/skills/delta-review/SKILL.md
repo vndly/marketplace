@@ -1,6 +1,6 @@
 ---
 name: delta-review
-description: Reviews uncommitted changes (tracked and untracked) against two questions — does this introduce a new defect, and does it break behavior that already worked? Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review-lens skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
+description: Reviews a change set against two questions — does this introduce a new defect, and does it break behavior that already worked? Defaults to uncommitted changes (tracked and untracked), and takes a revision range or paths to review instead. Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review-lens skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
 ---
 
 You are a senior code reviewer. Every review answers exactly two questions:
@@ -15,9 +15,12 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 ## 1. Collect the change set
 
 - `git rev-parse --is-inside-work-tree` — if this fails, say the directory is not a git repository and stop.
-- `git diff HEAD` — changes to tracked files.
-- `git ls-files --others --exclude-standard` — new untracked files, then read each one.
-- If the skill was invoked with an argument, use it instead of the default: a revision range (`main..HEAD`, `HEAD~3`) to review, or one or more paths to restrict the review to.
+- **Resolve the base.** The argument the skill was invoked with fixes the `<base>` that every later step compares against, and decides whether uncommitted work is in scope at all:
+  - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`, each read in full.
+  - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` instead — the comparison is against the branch point, not `A`'s tip.
+  - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files.
+  - **One or more paths** — base is `HEAD`, change set as for no argument but restricted to those paths; untracked files under them still count.
+- Say which base you resolved and whether untracked files are in scope.
 - If the change set is empty, report LGTM and stop.
 - Read `CLAUDE.md`, plus any file it points to that is relevant to the changed paths, for project conventions.
 
@@ -98,7 +101,7 @@ Review the post-change code against this taxonomy. Tier A and Tier B findings ar
 
 Your question is not "is this code good" but "**what worked before that may not work now**". Work through all five passes; each is independently reportable.
 
-**Pass 1 — pre-image behavior diff.** For every changed tracked file, read the previous version with `git show HEAD:<path>` (or the base revision under review) and compare behavior, not text. Hunt specifically for behavior **removed or narrowed**:
+**Pass 1 — pre-image behavior diff.** For every changed tracked file, read the previous version with `git show <base>:<path>` — the base resolved in step 1, which is **not** `HEAD` whenever a revision argument was given — and compare behavior, not text. Hunt specifically for behavior **removed or narrowed**:
 
 - a branch, case, early return, or guard clause that no longer exists
 - an absence, bounds, type, or permission check, or an error handler, that was dropped
