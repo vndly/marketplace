@@ -23,12 +23,9 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 
 ## 2. Find the project lens
 
-Project-specific depth comes from a **separately installed skill named `delta-review-lens`** — never from this one. Look in this order, stopping at the first that yields something:
+Project-specific depth comes from a **separately installed skill named `delta-review-lens`** — never from this one. Find it in **the available-skills listing in your context**: any skill whose name is or ends in `delta-review-lens`. That listing is the only source — never search the filesystem for a lens, and never use one that is not listed. Whatever is listed has already been scoped to this project by the harness; a lens installed for a different repo does not appear.
 
-1. **The available-skills listing in your context.** Any skill whose name is or ends in `delta-review-lens` — typically a directory-scoped entry (`some/path:delta-review-lens`) or one provided by a plugin.
-2. **The filesystem**, if the listing shows nothing: a `SKILL.md` under `<repo>/**/.claude/skills/delta-review-lens/`, `<repo>/**/skills/delta-review-lens/`, `~/.claude/skills/delta-review-lens/`, or `~/.claude/plugins/**/skills/delta-review-lens/`.
-
-**Selecting.** When several are found, keep those whose scope directory contains at least one changed file; a lens with no directory scope always applies. When none matches the changed paths, run without a lens — the two fixed reviewers below are then the whole review. Say which lens you used, or that you found none.
+**Selecting.** A listed name may carry a prefix (`some/path:delta-review-lens`). When that prefix is a directory in this repo, the lens covers that directory — keep it only if at least one changed file is inside. Any other prefix is a plugin or user-level name rather than a path, and that lens applies to the whole change set. When nothing matches the changed paths, run without a lens — the two fixed reviewers below are then the whole review. Say which lens you used, or that you found none.
 
 **Reading a lens.** Take only its project-specific material: architecture and layering rules, framework idioms, naming and registration conventions, storage and serialization shapes, localization and theming rules, the security surface, performance characteristics, and the file layout it names. **Ignore its orchestration, reporting, severity, and auto-fix instructions** — steps 4 through 8 here govern those, and following both would double-report and double-fix.
 
