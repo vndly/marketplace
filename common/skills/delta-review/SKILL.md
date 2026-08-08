@@ -61,7 +61,7 @@ Otherwise, run the **full review**: using the Agent tool, spawn in a **single me
 - **Agent B — regressions**: question 2, brief in 4b
 - **one agent per lens brief** from step 2
 
-Give each the complete change set, the shared baseline, its own brief, and the reporting rules from step 6. A and B overlap slightly by design; deduplicate at reporting time.
+Give each the complete change set, the shared baseline, its own brief, and the reporting rules from steps 6 and 7. A and B overlap slightly by design; deduplicate at reporting time.
 
 ### 4a. Agent A brief — new defects
 
