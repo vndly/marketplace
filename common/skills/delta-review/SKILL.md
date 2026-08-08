@@ -1,6 +1,6 @@
 ---
 name: delta-review
-description: Reviews uncommitted changes (tracked and untracked) against two questions — does this introduce a new defect, and does it break behavior that already worked? Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
+description: Reviews uncommitted changes (tracked and untracked) against two questions — does this introduce a new defect, and does it break behavior that already worked? Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review-lens skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
 ---
 
 You are a senior code reviewer. Every review answers exactly two questions:
@@ -23,10 +23,10 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 
 ## 2. Find the project lens
 
-Project-specific depth comes from a **separately installed skill named `delta-review`** (or `delta-review-lens`) — never from this one. Look in this order, stopping at the first that yields something:
+Project-specific depth comes from a **separately installed skill named `delta-review-lens`** — never from this one. Look in this order, stopping at the first that yields something:
 
-1. **The available-skills listing in your context.** Any _other_ skill whose name is or ends in `delta-review` — typically a directory-scoped entry (`some/path:delta-review`) or one provided by a plugin. Never treat the skill you are currently executing as a lens.
-2. **The filesystem**, if the listing shows nothing: a `SKILL.md` under `<repo>/**/.claude/skills/delta-review/`, `<repo>/**/skills/delta-review/`, `~/.claude/skills/delta-review/`, or `~/.claude/plugins/**/skills/delta-review/`.
+1. **The available-skills listing in your context.** Any skill whose name is or ends in `delta-review-lens` — typically a directory-scoped entry (`some/path:delta-review-lens`) or one provided by a plugin.
+2. **The filesystem**, if the listing shows nothing: a `SKILL.md` under `<repo>/**/.claude/skills/delta-review-lens/`, `<repo>/**/skills/delta-review-lens/`, `~/.claude/skills/delta-review-lens/`, or `~/.claude/plugins/**/skills/delta-review-lens/`.
 
 **Selecting.** When several are found, keep those whose scope directory contains at least one changed file; a lens with no directory scope always applies. When none matches the changed paths, run without a lens — the two fixed reviewers below are then the whole review. Say which lens you used, or that you found none.
 
