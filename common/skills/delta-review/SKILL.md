@@ -57,7 +57,7 @@ Do not expand past your assigned brief into style, readability, refactoring pref
 - authentication, authorization, permission, validation, or cryptographic code
 - build, dependency, CI, or environment configuration
 
-Otherwise, if the change is small and self-contained — roughly one or two files, a few dozen changed lines, no new behavior — do a **single inline pass** yourself against both questions and the baseline, then go to step 6. Say that you took the inline tier.
+Otherwise, if the change is small and self-contained — roughly one or two files, a few dozen changed lines, no new behavior — do a **single inline pass** yourself against both questions and the baseline, then continue to step 5 like every other tier — a finding you reached alone is refuted exactly as an agent's is. Say that you took the inline tier.
 
 Otherwise, run the **full review**: using the Agent tool, spawn in a **single message** so they run concurrently —
 
@@ -65,7 +65,7 @@ Otherwise, run the **full review**: using the Agent tool, spawn in a **single me
 - **Agent B — regressions**: question 2, brief in 4b
 - **one agent per lens brief** from step 2
 
-Give each the complete change set, the shared baseline, its own brief, and the reporting rules from steps 6 and 7. A and B overlap slightly by design; deduplicate at reporting time.
+Give each the complete change set, the shared baseline, its own brief, the reporting rules from steps 6 and 7, and **the static-reading constraint from the top of this skill** — reading, `git`, and search commands only, and no builds, tests, linters, formatters, or package managers. An agent that is not told this will run the suite to check its own finding. A and B overlap slightly by design; deduplicate at reporting time.
 
 ### 4a. Agent A brief — new defects
 
@@ -161,9 +161,9 @@ These are mechanical triggers: do not second-guess whether the edit looks intent
 
 ## 5. Refutation round
 
-Collect every finding any agent rated **Critical** or **Warning**, deduplicate them, and spawn **one skeptic agent per finding, all in a single message**. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
+Collect every **Critical** or **Warning** finding — from the review agents, or from your own pass if you took the inline tier — deduplicate them, and spawn **one skeptic agent per finding, all in a single message**. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which; for an inline-tier finding the brief is the shared baseline in step 3. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
 
-> Try to refute this finding. Read the surrounding code and prove it wrong.
+> Try to refute this finding. Read the surrounding code and prove it wrong. This is a static reading pass: read code and run `git` or search commands only — no builds, tests, linters, formatters, or package managers.
 >
 > - A **runtime defect** is refuted when the failure cannot happen: the input is unreachable, the case is handled elsewhere, the contract is not what the finding assumes, the call site does not exist, the author's intent makes it correct.
 > - A **convention violation** — one that cites a rule from the brief rather than a runtime failure — is refuted when the brief does not state that rule, the changed code does not actually break it, or the brief itself exempts this case. Never refute one for causing no crash or wrong output: a broken convention stands whether or not anything misbehaves at runtime.
@@ -209,8 +209,10 @@ Omit any section that is empty. If all are empty, say LGTM and skip the tables. 
 
 ## 8. Fix, self-check, then hand back honestly
 
-Fix every **Confirmed** Critical and Warning before returning control. **Never** edit code on the strength of an unverified suspicion — report it and leave it. Leave Nits reported but unfixed unless the caller asks. Make the smallest fix that resolves the finding; do not refactor around it.
+**Fix only code you reviewed.** The working tree holds the reviewed code for the no-argument and path forms, and for a single revision, whose tip is `HEAD`. For a two- or three-dot range, check that the tip resolves to `HEAD` — `git rev-parse <tip>` against `git rev-parse HEAD` — before touching a file. When it does not, what is on disk is not what you reviewed: report the findings and fix nothing, saying that the review targeted committed history rather than the working tree.
+
+Otherwise fix every **Confirmed** Critical and Warning before returning control. **Never** edit code on the strength of an unverified suspicion — report it and leave it. Leave Nits reported but unfixed unless the caller asks. Make the smallest fix that resolves the finding; do not refactor around it.
 
 Then, and only for the hunks you just edited, re-read them against the same two questions: does this fix introduce a defect, and does it break anything that worked? Fix and note anything it turns up. Do not re-run the review agents — the caller will request another review if needed.
 
-Finally, state what you changed **and that nothing was executed**. This skill runs no builds, tests, or linters, so every fix it applied is unverified; verification belongs to the caller's own verify step. The summary must not imply otherwise.
+Finally, state what you changed — or that you fixed nothing, and why — **and that nothing was executed**. This skill runs no builds, tests, or linters, so every fix it applied is unverified; verification belongs to the caller's own verify step. The summary must not imply otherwise.
