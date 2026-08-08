@@ -15,10 +15,10 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 ## 1. Collect the change set
 
 - `git rev-parse --is-inside-work-tree` — if this fails, say the directory is not a git repository and stop.
-- **Resolve the base.** The argument the skill was invoked with fixes the `<base>` that every later step compares against, and decides whether uncommitted work is in scope at all:
+- **Resolve the base.** The argument the skill was invoked with fixes the `<base>` that every later step compares against, and decides whether uncommitted work is in scope at all. Classify each argument first: it is a revision when `git rev-parse --verify --quiet '<arg>^{commit}'` succeeds, and a path otherwise. When an argument is both — a branch and a file of the same name — say which reading you took; the caller forces the path reading with `--` (`delta-review -- main`). Then:
   - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`.
   - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` instead — the comparison is against the branch point, not `A`'s tip.
-  - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files.
+  - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files. When `R` resolves to `HEAD` itself the diff is empty by construction, and the caller meant the work in front of them: take the no-argument form instead, and say that you did.
   - **One or more paths** — base is `HEAD`, change set as for no argument but restricted to those paths; untracked files under them still count.
 - Say which base you resolved and whether untracked files are in scope.
 - **Bound what you read.** Untracked files arrive whole rather than as diffs, so one large file can crowd out the review itself. Skip binaries, and minified or generated bundles — judge by extension and by the first few lines. Read the first ~200 lines of anything longer than roughly 1000 and say you truncated it. When the list runs long, name every file but read only those plausibly under review. State every skip and truncation: an unread file is not a reviewed file, and nothing later may imply it was.
@@ -197,7 +197,11 @@ A finding belongs in Confirmed only if it is discrete and actionable, provably a
 
 ## 7. Reporting
 
-Deduplicate across all agents, then present:
+Deduplicate across all agents. Everything the steps above told you to say — the base and whether untracked files were in scope, every skip and truncation (named when few, counted when many, never phrased so an unread file reads as reviewed), the lens, the tier, refutation and batching counts — collapses into **one provenance line** above the tables. Never narrate it as a walkthrough:
+
+`Base HEAD · untracked in scope · lens: none · full tier · api.ts truncated at 200 lines · 7 findings, 3 refuted`
+
+Then the tables, at most one sentence per cell:
 
 ```
 ### Confirmed
@@ -227,4 +231,4 @@ Otherwise fix every **Confirmed** Critical and Warning before returning control.
 
 Then, and only for the hunks you just edited, re-read them against the same two questions: does this fix introduce a defect, and does it break anything that worked? Fix and note anything it turns up. Do not re-run the review agents — the caller will request another review if needed.
 
-Finally, state what you changed — or that you fixed nothing, and why — **and that nothing was executed**. This skill runs no builds, tests, or linters, so every fix it applied is unverified; verification belongs to the caller's own verify step. The summary must not imply otherwise.
+Finally, in a line or two, state what you changed — or that you fixed nothing, and why — **and that nothing was executed**. This skill runs no builds, tests, or linters, so every fix it applied is unverified; verification belongs to the caller's own verify step. The summary must not imply otherwise.
