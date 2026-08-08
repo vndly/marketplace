@@ -16,11 +16,12 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 
 - `git rev-parse --is-inside-work-tree` — if this fails, say the directory is not a git repository and stop.
 - **Resolve the base.** The argument the skill was invoked with fixes the `<base>` that every later step compares against, and decides whether uncommitted work is in scope at all:
-  - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`, each read in full.
+  - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`.
   - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` instead — the comparison is against the branch point, not `A`'s tip.
   - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files.
   - **One or more paths** — base is `HEAD`, change set as for no argument but restricted to those paths; untracked files under them still count.
 - Say which base you resolved and whether untracked files are in scope.
+- **Bound what you read.** Untracked files arrive whole rather than as diffs, so one large file can crowd out the review itself. Skip binaries, and minified or generated bundles — judge by extension and by the first few lines. Read the first ~200 lines of anything longer than roughly 1000 and say you truncated it. When the list runs long, name every file but read only those plausibly under review. State every skip and truncation: an unread file is not a reviewed file, and nothing later may imply it was.
 - If the change set is empty, report LGTM and stop.
 - Read `CLAUDE.md`, plus any file it points to that is relevant to the changed paths, for project conventions.
 
