@@ -157,9 +157,14 @@ These are mechanical triggers: do not second-guess whether the edit looks intent
 
 ## 5. Refutation round
 
-Collect every finding any agent rated **Critical** or **Warning**, deduplicate them, and spawn **one skeptic agent per finding, all in a single message**. Give each the finding, the change set, and this instruction:
+Collect every finding any agent rated **Critical** or **Warning**, deduplicate them, and spawn **one skeptic agent per finding, all in a single message**. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
 
-> Try to refute this finding. Read the surrounding code and prove the failure cannot happen — the input is unreachable, the case is handled elsewhere, the contract is not what the finding assumes, the call site does not exist, the author's intent makes it correct. Return `refuted` or `survives` with the evidence for your verdict. Default to `refuted` when uncertain.
+> Try to refute this finding. Read the surrounding code and prove it wrong.
+>
+> - A **runtime defect** is refuted when the failure cannot happen: the input is unreachable, the case is handled elsewhere, the contract is not what the finding assumes, the call site does not exist, the author's intent makes it correct.
+> - A **convention violation** — one that cites a rule from the brief rather than a runtime failure — is refuted when the brief does not state that rule, the changed code does not actually break it, or the brief itself exempts this case. Never refute one for causing no crash or wrong output: a broken convention stands whether or not anything misbehaves at runtime.
+>
+> Return `refuted` or `survives` with the evidence for your verdict. Default to `refuted` when uncertain about the code — but if the brief you were given does not cover the rule the finding cites, say that instead of refuting.
 
 Refuted findings are **dropped, not downgraded** — do not report them at all. Nits and unverified suspicions skip this round: they are never fixed, so they cost nothing to leave in. State how many findings were refuted.
 
@@ -167,7 +172,11 @@ Refuted findings are **dropped, not downgraded** — do not report them at all. 
 
 Sort every surviving finding into one of two buckets:
 
-- **Confirmed** — you can state all three of: a **reachable scenario** (the concrete input, state, or sequence that triggers it), the **invariant it violates**, and the **resulting observable behavior** — anchored at `file:line`. Citing a location is not enough on its own: a real line number can still anchor an unreal defect.
+- **Confirmed** — anchored at `file:line`, and one of:
+  - a **runtime defect**, where you can state all three of: a **reachable scenario** (the concrete input, state, or sequence that triggers it), the **invariant it violates**, and the **resulting observable behavior**;
+  - a **convention violation** from a lens, where you can state all three of: the **rule the brief states**, the **changed code that breaks it**, and the **conforming form** it should take instead. Demand no runtime symptom here — a layering, registration, or naming rule can be broken by code that runs perfectly.
+
+  Citing a location is not enough on its own: a real line number can anchor an unreal defect, and a real rule can be cited against code that does not actually break it.
 - **Unverified suspicion** — plausible and consequential, but not demonstrable from the code alone. State the risk and the **specific check that would settle it**: a test to run, a state to reproduce, a file or system to inspect. Never inflate one into a Confirmed finding, and never silently drop one.
 
 A finding belongs in Confirmed only if it is discrete and actionable, provably affects real code paths (name them, don't speculate), matches the rigor of the surrounding codebase, and is clearly not a deliberate choice by the author.
@@ -178,7 +187,7 @@ Deduplicate across all agents, then present:
 
 ```
 ### Confirmed
-| File | Line | Severity | Category | Scenario → invariant → observable behavior | Suggested fix |
+| File | Line | Severity | Category | Evidence — scenario → invariant → behavior, or rule → violation → conforming form | Suggested fix |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 
 ### Unverified suspicions
@@ -190,7 +199,7 @@ Deduplicate across all agents, then present:
 | :--- | :--- | :--- | :--- |
 ```
 
-Severity: **Critical** (causes a crash, wrong behavior, data loss, or breaks something that worked) · **Warning** (probable defect or latent hazard) · **Nit** (from a lens only, never fixed). Category: name the pass or lens it came from — `Defect`, `Regression`, `Contract`, `Security`, `Resource`, plus whatever categories the lens defines.
+Severity: **Critical** (causes a crash, wrong behavior, data loss, or breaks something that worked) · **Warning** (probable defect, latent hazard, or a confirmed convention violation with no runtime symptom) · **Nit** (from a lens only, never fixed). Category: name the pass or lens it came from — `Defect`, `Regression`, `Contract`, `Security`, `Resource`, plus whatever categories the lens defines.
 
 Omit any section that is empty. If all are empty, say LGTM and skip the tables. End with one line: `X critical, Y warnings, Z nits across N files; W unverified suspicions.`
 
