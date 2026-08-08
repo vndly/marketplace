@@ -1,6 +1,6 @@
 ---
 name: delta-review
-description: Reviews a change set against two questions — does this introduce a new defect, and does it break behavior that already worked? Defaults to uncommitted changes (tracked and untracked), and takes a revision range or paths to review instead. Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review-lens skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
+description: Reviews a change set against two questions — does this introduce a new defect, and does it break behavior that already worked? Defaults to uncommitted changes (tracked and untracked), and takes a revision, a range, or paths to review instead. Runs a defect review and a regression review in parallel, adds a project lens taken from any separately installed delta-review-lens skill, has every fix candidate adversarially refuted before reporting, and auto-fixes only what survives.
 ---
 
 You are a senior code reviewer. Every review answers exactly two questions:
@@ -15,11 +15,19 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
 ## 1. Collect the change set
 
 - `git rev-parse --is-inside-work-tree` — if this fails, say the directory is not a git repository and stop.
-- **Resolve the base.** The argument the skill was invoked with fixes the `<base>` that every later step compares against, and decides whether uncommitted work is in scope at all. Classify each argument first: it is a revision when `git rev-parse --verify --quiet '<arg>^{commit}'` succeeds, and a path otherwise. When an argument is both — a branch and a file of the same name — say which reading you took; the caller forces the path reading with `--` (`delta-review -- main`). Then:
+- **Resolve the base.** The arguments the skill was invoked with fix the `<base>` that every later step compares against, and decide whether uncommitted work is in scope at all. Classify every argument first, in this order:
+  - Everything after a bare `--` is a path, and the `--` itself is not an argument — that is how the caller forces the path reading of a name that is also a branch (`delta-review -- main`).
+  - A **range** when the argument contains `..`: split it on `...` if present and on `..` otherwise, then verify each side with `git rev-parse --verify --quiet '<side>^{commit}'`, reading an omitted side as `HEAD`. Verify the sides, never the range string — `git rev-parse --verify 'A..B^{commit}'` always fails, and a range that falls through to the path reading produces an empty diff and a false LGTM.
+  - A **revision** when `git rev-parse --verify --quiet '<arg>^{commit}'` succeeds.
+  - A **path** otherwise. A name that is both a branch and a file reads as the revision by this order — say which reading you took.
+
+  At most one range or revision may appear; if two do, say so and stop. Paths may accompany one, and restrict the change set without moving the base. Then:
+
   - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`.
-  - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` instead — the comparison is against the branch point, not `A`'s tip.
+  - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` and the change set is `git diff A...B` — the comparison is against the branch point, not `A`'s tip.
   - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files. When `R` resolves to `HEAD` itself the diff is empty by construction, and the caller meant the work in front of them: take the no-argument form instead, and say that you did.
   - **One or more paths** — base is `HEAD`, change set as for no argument but restricted to those paths; untracked files under them still count.
+  - **Paths with a range or revision** — that form's base and change set, restricted by appending `-- <paths>` (`git diff A..B -- <paths>`). Committed work only, as the form itself is.
 - Say which base you resolved and whether untracked files are in scope.
 - **Bound what you read.** Untracked files arrive whole rather than as diffs, so one large file can crowd out the review itself. Skip binaries, and minified or generated bundles — judge by extension and by the first few lines. Read the first ~200 lines of anything longer than roughly 1000 and say you truncated it. When the list runs long, name every file but read only those plausibly under review. State every skip and truncation: an unread file is not a reviewed file, and nothing later may imply it was.
 - If the change set is empty, report LGTM and stop.
@@ -47,7 +55,7 @@ Every reviewer, fixed or lens, reports high-confidence defects in the changed co
 
 Do not expand past your assigned brief into style, readability, refactoring preference, or missing tests without a concrete defect. Before reporting anything, read the surrounding code and confirm the problem is real and not already handled elsewhere.
 
-When a problem is plausible and consequential but you cannot demonstrate it from the code alone, neither discard it nor state it as fact: report it as an **unverified suspicion**, and name the specific check that would settle it. That is the only route into that bucket in step 6 — the high-confidence bar above governs everything else you report.
+When a problem is plausible and consequential but you cannot demonstrate it from the code alone, neither discard it nor state it as fact: report it as an **unverified suspicion**, and name the specific check that would settle it. That is your only route into that bucket in step 6 — the high-confidence bar above governs everything else you report. The other route is not yours to take: step 5 demotes a finding whose skeptic could not settle it.
 
 ## 4. Choose the tier, then fan out
 
@@ -59,7 +67,7 @@ When a problem is plausible and consequential but you cannot demonstrate it from
 - authentication, authorization, permission, validation, or cryptographic code
 - build, dependency, CI, or environment configuration
 
-Otherwise, if the change is small and self-contained — roughly one or two files, a few dozen changed lines, no new behavior — do a **single inline pass** yourself against both questions and the baseline, then continue to step 5 like every other tier — a finding you reached alone is refuted exactly as an agent's is. Say that you took the inline tier.
+Otherwise, if the change is small and self-contained — roughly one or two files, a few dozen changed lines, no new behavior — do a **single inline pass** yourself against both questions, the baseline, and **every lens brief from step 2**, then continue to step 5 like every other tier — a finding you reached alone is refuted exactly as an agent's is. The lens is not optional at this tier: a two-line diff breaks a project rule as easily as a large one, and a Nit exists only because a lens asked for it. Say that you took the inline tier.
 
 Otherwise, run the **full review**: using the Agent tool, spawn in a **single message** so they run concurrently —
 
@@ -104,7 +112,7 @@ Review the post-change code against this taxonomy. Tier A and Tier B findings ar
 
 Your question is not "is this code good" but "**what worked before that may not work now**". Work through all five passes; each is independently reportable.
 
-**Pass 1 — pre-image behavior diff.** Classify the change set first: `git diff --name-status -M` over exactly the range step 1 resolved — `<base>` alone for the working-tree forms, `A..B` or `R HEAD` for the committed ones. Comparing `<base>` against the working tree when the review targets a committed range classifies the wrong files. Everything below reads from `<base>`, which is **not** `HEAD` whenever a revision argument was given. Then read each file's previous version and compare behavior, not text:
+**Pass 1 — pre-image behavior diff.** Classify the change set first: `git diff --name-status -M` over exactly the range step 1 resolved — `<base>` alone for the working-tree forms, `A..B` or `R HEAD` for the committed ones, with the same `-- <paths>` restriction when the caller gave paths. Comparing `<base>` against the working tree when the review targets a committed range classifies the wrong files. Everything below reads from `<base>`, which is **not** `HEAD` whenever a revision argument was given. Then read each file's previous version and compare behavior, not text:
 
 - **modified** (`M`) — `git show <base>:<path>`
 - **renamed or copied** (`R`/`C`) — `git show <base>:<oldpath>`, taking the old path from the status line; `<path>` does not exist at the base and the command will fail
@@ -146,7 +154,7 @@ When the gate fires, grep the whole repository for each affected symbol and **re
 - wraps previously bare assertions in error handling
 - weakens a shared helper, fixture, or matcher that other tests depend on — name the tests it affects
 
-These are mechanical triggers: do not second-guess whether the edit looks intentional, it always does. Report it and require the intent to be stated. Ordinary test edits — new cases, renames, fixture churn, added assertions — are **not** findings.
+These are mechanical triggers: do not second-guess whether the edit looks intentional — it always does. Report it and require the intent to be stated. Ordinary test edits — new cases, renames, fixture churn, added assertions — are **not** findings.
 
 **Pass 4 — persisted and external contract compatibility.** Data written by the old code is read by the new code, and consumers built against the old contract are still out there. Report anything that silently invalidates data or breaks a consumer:
 
@@ -170,16 +178,20 @@ These are mechanical triggers: do not second-guess whether the edit looks intent
 
 ## 5. Refutation round
 
-Collect every **Critical** or **Warning** finding — from the review agents, or from your own pass if you took the inline tier — deduplicate them, and spawn **one skeptic agent per finding, all in a single message** — up to ten. Past ten, cluster the findings by file into at most ten groups and give one skeptic each group, asking for a separate verdict on every finding in it; say that you batched and how. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which; for an inline-tier finding the brief is the shared baseline in step 3. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
+Collect every **Critical** or **Warning** finding — from the review agents, or from your own pass if you took the inline tier — deduplicate them, and spawn **one skeptic agent per finding, all in a single message** — up to ten. Past ten, cluster the findings by file into at most ten groups and give one skeptic each group, asking for a separate verdict on every finding in it; say that you batched and how. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which; for an inline-tier finding it is whichever brief you were applying when you reached it, the shared baseline in step 3 or the lens brief whose rule it cites. A batched skeptic gets every brief its group draws on. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
 
 > Try to refute this finding. Read the surrounding code and prove it wrong. This is a static reading pass: read code and run `git` or search commands only — no builds, tests, linters, formatters, or package managers.
 >
 > - A **runtime defect** is refuted when the failure cannot happen: the input is unreachable, the case is handled elsewhere, the contract is not what the finding assumes, the call site does not exist, the author's intent makes it correct.
 > - A **convention violation** — one that cites a rule from the brief rather than a runtime failure — is refuted when the brief does not state that rule, the changed code does not actually break it, or the brief itself exempts this case. Never refute one for causing no crash or wrong output: a broken convention stands whether or not anything misbehaves at runtime.
 >
-> Return `refuted` or `survives` with the evidence for your verdict. Default to `refuted` when uncertain about the code — but if the brief you were given does not cover the rule the finding cites, say that instead of refuting.
+> Return exactly one verdict, with the evidence for it:
+>
+> - `refuted` — a route above held, and the finding is wrong. Reach for this whenever the code itself decides the question against the finding.
+> - `survives` — you tried every route above and none of them held.
+> - `unsettled` — reading cannot decide it: the deciding code is absent, generated, third-party, or the behavior turns on runtime state you cannot observe. Name the one check that would settle it — a test to run, a state to reproduce, a file or system to inspect. Choose this over `refuted` when your doubt is about your own evidence rather than about the finding, or when the brief you were given does not cover the rule the finding cites.
 
-Refuted findings are **dropped, not downgraded** — do not report them at all. Nits and unverified suspicions skip this round: they are never fixed, so they cost nothing to leave in. State how many findings were refuted.
+`refuted` findings are **dropped, not downgraded** — do not report them at all. An `unsettled` finding is demoted to an **unverified suspicion** in step 6 and carries the skeptic's check with it: reported, never fixed. That demotion is what lets `refuted` mean disproved rather than merely doubted: uncertainty has a bucket now, so it no longer has to be a deletion. Nits and existing unverified suspicions skip this round: they are never fixed, so they cost nothing to leave in. State how many findings were refuted and how many were demoted.
 
 ## 6. Evidence bar and buckets
 
@@ -190,16 +202,16 @@ Sort every surviving finding into one of three buckets:
   - a **convention violation** from a lens, where you can state all three of: the **rule the brief states**, the **changed code that breaks it**, and the **conforming form** it should take instead. Demand no runtime symptom here — a layering, registration, or naming rule can be broken by code that runs perfectly.
 
   Citing a location is not enough on its own: a real line number can anchor an unreal defect, and a real rule can be cited against code that does not actually break it.
-- **Unverified suspicion** — plausible and consequential, but not demonstrable from the code alone. State the risk and the **specific check that would settle it**: a test to run, a state to reproduce, a file or system to inspect. Never inflate one into a Confirmed finding, and never silently drop one.
+- **Unverified suspicion** — plausible and consequential, but not demonstrable from the code alone. State the risk and the **specific check that would settle it**: a test to run, a state to reproduce, a file or system to inspect. Two routes lead here: a reviewer who could not demonstrate the problem (step 3), and a Critical or Warning its skeptic returned `unsettled` (step 5), which arrives with its check already named. Never inflate one into a Confirmed finding, and never silently drop one.
 - **Nit** — cosmetic or preference-level material a lens asked to have surfaced: real, but neither a defect nor worth an edit. Only a lens brief produces one; the fixed reviewers in 4a and 4b never do, since step 3 keeps them off style and preference. Reported, never fixed.
 
 A finding belongs in Confirmed only if it is discrete and actionable, provably affects real code paths (name them, don't speculate), matches the rigor of the surrounding codebase, and is clearly not a deliberate choice by the author.
 
 ## 7. Reporting
 
-Deduplicate across all agents. Everything the steps above told you to say — the base and whether untracked files were in scope, every skip and truncation (named when few, counted when many, never phrased so an unread file reads as reviewed), the lens, the tier, refutation and batching counts — collapses into **one provenance line** above the tables. Never narrate it as a walkthrough:
+Deduplicate across all agents. Everything the steps above told you to say — the base and whether untracked files were in scope, every skip and truncation (named when few, counted when many, never phrased so an unread file reads as reviewed), the lens, the tier, the skeptic accounting (candidates in, refuted, demoted, reported), and the batching if you batched — collapses into **one provenance line** above the tables. Never narrate it as a walkthrough:
 
-`Base HEAD · untracked in scope · lens: none · full tier · api.ts truncated at 200 lines · 7 findings, 3 refuted`
+`Base HEAD · untracked in scope · lens: none · full tier · api.ts truncated at 200 lines · 10 candidates → 3 refuted, 1 demoted, 6 reported`
 
 Then the tables, at most one sentence per cell:
 
@@ -223,7 +235,12 @@ Omit any section that is empty. If all are empty, say LGTM and skip the tables. 
 
 ## 8. Fix, self-check, then hand back honestly
 
-**Fix only code you reviewed.** The working tree holds the reviewed code for the no-argument and path forms, and for a single revision, whose tip is `HEAD`. For a two- or three-dot range, check that the tip resolves to `HEAD` — `git rev-parse <tip>` against `git rev-parse HEAD` — before touching a file. When it does not, what is on disk is not what you reviewed: report the findings and fix nothing, saying that the review targeted committed history rather than the working tree.
+**Fix only code you reviewed.** For the no-argument and path forms the working tree *is* the reviewed change set, so fix freely. The committed forms — a single revision, or a two- or three-dot range — reviewed history, and what is on disk need not match it. Before touching a file for those, run both checks:
+
+- the tip resolves to `HEAD` — `git rev-parse <tip>` against `git rev-parse HEAD`;
+- the tree is clean — `git diff --quiet HEAD` succeeds.
+
+When either fails, report the findings and fix nothing, and say which one failed. Uncommitted work sits on top of the history you read, so a fix placed at a reviewed line number would land in code you never saw.
 
 Otherwise fix every **Confirmed** Critical and Warning before returning control. **Never** edit code on the strength of an unverified suspicion — report it and leave it. Leave Nits reported but unfixed unless the caller asks. Make the smallest fix that resolves the finding; do not refactor around it.
 
