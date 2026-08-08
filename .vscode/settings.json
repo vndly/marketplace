@@ -9,7 +9,10 @@
   "editor.formatOnSave": false,
   "editor.fontFamily": "'Source Code Pro'",
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "explicit",
+    "source.fixAll": "explicit"
   },
+  "files.encoding": "utf8",
+  "files.autoSave": "afterDelay",
   "eslint.run": "onSave"
 }
