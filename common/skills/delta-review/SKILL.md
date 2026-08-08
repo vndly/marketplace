@@ -31,9 +31,9 @@ Project-specific depth comes from a **separately installed skill named `delta-re
 
 **Selecting.** A listed name may carry a prefix (`some/path:delta-review-lens`). When that prefix is a directory in this repo, the lens covers that directory — keep it only if at least one changed file is inside. Any other prefix is a plugin or user-level name rather than a path, and that lens applies to the whole change set. When nothing matches the changed paths, run without a lens — the two fixed reviewers below are then the whole review. Say which lens you used, or that you found none.
 
-**Reading a lens.** Take only its project-specific material: architecture and layering rules, framework idioms, naming and registration conventions, storage and serialization shapes, localization and theming rules, the security surface, performance characteristics, and the file layout it names. **Ignore its orchestration, reporting, severity, and auto-fix instructions** — steps 4 through 8 here govern those, and following both would double-report and double-fix.
+**Reading a lens.** Take only its project-specific material: architecture and layering rules, framework idioms, naming and registration conventions, storage and serialization shapes, localization and theming rules, the security surface, performance characteristics, and the file layout it names. **Ignore its orchestration, severity, and auto-fix instructions, and the shape of its report** — steps 4 through 8 here govern those, and following both would double-report and double-fix. Two things do carry over from its reporting: the **facts it demands a finding state**, and the **category names** it defines.
 
-**Splitting.** If the lens material separates cleanly into topics — architecture, domain correctness, security, style, and so on — make each topic one lens brief. Otherwise make the whole thing a single "project lens" brief. Every lens brief inherits the shared baseline in step 3, and keeps whatever output shape the lens itself demands (for example: attacker capability, exploitation path, affected asset, smallest effective remediation).
+**Splitting.** If the lens material separates cleanly into topics — architecture, domain correctness, security, style, and so on — make each topic one lens brief. Otherwise make the whole thing a single "project lens" brief. Every lens brief inherits the shared baseline in step 3, and keeps whatever facts the lens demands a finding state (for example: attacker capability, exploitation path, affected asset, smallest effective remediation) — those become the Evidence cell of step 7's table, whose columns, severities, and sections stay fixed regardless. A lens that asks for cosmetic or preference-level material gets it reported as a **Nit** (step 6); say so in the brief, because nothing else will produce one.
 
 ## 3. Shared baseline — goes into every brief
 
@@ -46,6 +46,8 @@ Every reviewer, fixed or lens, reports high-confidence defects in the changed co
 - contradict the behavior the changed code itself describes
 
 Do not expand past your assigned brief into style, readability, refactoring preference, or missing tests without a concrete defect. Before reporting anything, read the surrounding code and confirm the problem is real and not already handled elsewhere.
+
+When a problem is plausible and consequential but you cannot demonstrate it from the code alone, neither discard it nor state it as fact: report it as an **unverified suspicion**, and name the specific check that would settle it. That is the only route into that bucket in step 6 — the high-confidence bar above governs everything else you report.
 
 ## 4. Choose the tier, then fan out
 
@@ -102,7 +104,14 @@ Review the post-change code against this taxonomy. Tier A and Tier B findings ar
 
 Your question is not "is this code good" but "**what worked before that may not work now**". Work through all five passes; each is independently reportable.
 
-**Pass 1 — pre-image behavior diff.** For every changed tracked file, read the previous version with `git show <base>:<path>` — the base resolved in step 1, which is **not** `HEAD` whenever a revision argument was given — and compare behavior, not text. Hunt specifically for behavior **removed or narrowed**:
+**Pass 1 — pre-image behavior diff.** Classify the change set first: `git diff --name-status -M` over exactly the range step 1 resolved — `<base>` alone for the working-tree forms, `A..B` or `R HEAD` for the committed ones. Comparing `<base>` against the working tree when the review targets a committed range classifies the wrong files. Everything below reads from `<base>`, which is **not** `HEAD` whenever a revision argument was given. Then read each file's previous version and compare behavior, not text:
+
+- **modified** (`M`) — `git show <base>:<path>`
+- **renamed or copied** (`R`/`C`) — `git show <base>:<oldpath>`, taking the old path from the status line; `<path>` does not exist at the base and the command will fail
+- **added** (`A`), and every untracked file — no pre-image exists, so there is no regression to find here; leave it to Agent A and do not spend turns proving the file is new
+- **deleted** (`D`) — read `git show <base>:<path>` and treat everything it did as removed behavior, then check its callers in Pass 2
+
+Hunt specifically for behavior **removed or narrowed**:
 
 - a branch, case, early return, or guard clause that no longer exists
 - an absence, bounds, type, or permission check, or an error handler, that was dropped
@@ -124,7 +133,7 @@ For each, state what input or state used to be handled and now is not.
 - a registration list, factory, or lookup table gaining or losing an entry
 - one side of a pair of definitions that must stay in sync changing alone — schema and model, constant and config file, translation catalogs, generated client and hand-written server
 
-When the gate fires, grep the whole repository for each affected symbol and **read every call site — no cap, no sampling** — deciding for each whether the new contract still holds there. State how many call sites you inspected. When the gate does not fire, say so and skip this pass; most diffs are internal-body edits.
+When the gate fires, grep the whole repository for each affected symbol and **read every call site — no cap, no sampling** — deciding for each whether the new contract still holds there. State how many call sites you inspected. When a symbol has more call sites than one pass can hold (roughly fifty and up), never thin them out silently: read the ones that touch the changed part of the contract first, then report the total, the number you read, and the rest as a single unverified suspicion naming the exact grep that would settle it. When the gate does not fire, say so and skip this pass; most diffs are internal-body edits.
 
 **Pass 3 — test-weakening audit.** Existing tests are the recorded contract. A test bent to fit new behavior is the strongest silent-regression signal there is. Report — quoting the before and after — whenever the diff to a test file does any of:
 
@@ -161,7 +170,7 @@ These are mechanical triggers: do not second-guess whether the edit looks intent
 
 ## 5. Refutation round
 
-Collect every **Critical** or **Warning** finding — from the review agents, or from your own pass if you took the inline tier — deduplicate them, and spawn **one skeptic agent per finding, all in a single message**. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which; for an inline-tier finding the brief is the shared baseline in step 3. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
+Collect every **Critical** or **Warning** finding — from the review agents, or from your own pass if you took the inline tier — deduplicate them, and spawn **one skeptic agent per finding, all in a single message** — up to ten. Past ten, cluster the findings by file into at most ten groups and give one skeptic each group, asking for a separate verdict on every finding in it; say that you batched and how. Give each the finding, the change set, and **the brief the finding came from** — you spawned the agent that produced it, so you know which; for an inline-tier finding the brief is the shared baseline in step 3. A lens finding cites a project rule that appears nowhere in the diff, so a skeptic who cannot see that rule cannot judge it. Then this instruction:
 
 > Try to refute this finding. Read the surrounding code and prove it wrong. This is a static reading pass: read code and run `git` or search commands only — no builds, tests, linters, formatters, or package managers.
 >
@@ -174,7 +183,7 @@ Refuted findings are **dropped, not downgraded** — do not report them at all. 
 
 ## 6. Evidence bar and buckets
 
-Sort every surviving finding into one of two buckets:
+Sort every surviving finding into one of three buckets:
 
 - **Confirmed** — anchored at `file:line`, and one of:
   - a **runtime defect**, where you can state all three of: a **reachable scenario** (the concrete input, state, or sequence that triggers it), the **invariant it violates**, and the **resulting observable behavior**;
@@ -182,6 +191,7 @@ Sort every surviving finding into one of two buckets:
 
   Citing a location is not enough on its own: a real line number can anchor an unreal defect, and a real rule can be cited against code that does not actually break it.
 - **Unverified suspicion** — plausible and consequential, but not demonstrable from the code alone. State the risk and the **specific check that would settle it**: a test to run, a state to reproduce, a file or system to inspect. Never inflate one into a Confirmed finding, and never silently drop one.
+- **Nit** — cosmetic or preference-level material a lens asked to have surfaced: real, but neither a defect nor worth an edit. Only a lens brief produces one; the fixed reviewers in 4a and 4b never do, since step 3 keeps them off style and preference. Reported, never fixed.
 
 A finding belongs in Confirmed only if it is discrete and actionable, provably affects real code paths (name them, don't speculate), matches the rigor of the surrounding codebase, and is clearly not a deliberate choice by the author.
 
@@ -212,6 +222,8 @@ Omit any section that is empty. If all are empty, say LGTM and skip the tables. 
 **Fix only code you reviewed.** The working tree holds the reviewed code for the no-argument and path forms, and for a single revision, whose tip is `HEAD`. For a two- or three-dot range, check that the tip resolves to `HEAD` — `git rev-parse <tip>` against `git rev-parse HEAD` — before touching a file. When it does not, what is on disk is not what you reviewed: report the findings and fix nothing, saying that the review targeted committed history rather than the working tree.
 
 Otherwise fix every **Confirmed** Critical and Warning before returning control. **Never** edit code on the strength of an unverified suspicion — report it and leave it. Leave Nits reported but unfixed unless the caller asks. Make the smallest fix that resolves the finding; do not refactor around it.
+
+**Bound a convention fix.** A confirmed convention violation is a Warning, so auto-fix covers it — but only where the conforming form is a local, mechanical edit inside the changed files: a rename, a corrected import, a moved call, an added registration entry. When conforming means moving code across layers or files, reshaping a type, or editing files outside the change set, leave the code alone: report the finding with the conforming form it should take, and say you did not apply it. Nothing here is compiled, and a structural edit made blind costs more than the violation it fixes.
 
 Then, and only for the hunks you just edited, re-read them against the same two questions: does this fix introduce a defect, and does it break anything that worked? Fix and note anything it turns up. Do not re-run the review agents — the caller will request another review if needed.
 
