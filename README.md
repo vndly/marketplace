@@ -17,5 +17,5 @@ codex plugin add common@vndly
 ## Install for Antigravity CLI
 
 ```sh
-agy plugin install https://github.com/vndly/marketplace
+agy plugin install https://github.com/vndly/marketplace/tree/main/plugins/antigravity
 ```
