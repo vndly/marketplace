@@ -9,6 +9,7 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Common",
+    "defaultPrompt": "Use the common productivity skills.",
     "shortDescription": "Common Plugin",
     "longDescription": "Common Plugin",
     "developerName": "vndly",
