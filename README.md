@@ -2,9 +2,9 @@
 
 ## Install for Claude Code
 
-```text
-/plugin marketplace add vndly/marketplace
-/plugin install common@vndly
+```sh
+claude plugin marketplace add vndly/marketplace
+claude plugin install common@vndly
 ```
 
 ## Install for Codex
