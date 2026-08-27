@@ -6,5 +6,16 @@
     "name": "vndly"
   },
   "repository": "https://github.com/vndly/marketplace",
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Common",
+    "shortDescription": "Common Plugin",
+    "longDescription": "Common Plugin",
+    "developerName": "vndly",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ]
+  }
 }
