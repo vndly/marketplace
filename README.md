@@ -7,7 +7,7 @@ Provider-native skills for Claude Code and Codex live in separate packages so ea
 | Claude Code | `.claude-plugin/marketplace.json`  | `plugins/claude-code/common` | `.claude-plugin/plugin.json` |
 | Codex       | `.agents/plugins/marketplace.json` | `plugins/codex/common`       | `.codex-plugin/plugin.json`  |
 
-Both packages carry `apocalypse-bug-review`, `delta-review`, and `grill-me` — same skill names and expected outcomes, but separate `SKILL.md` files. They are released independently: the Claude Code package remains at `1.7.0`, while the Codex package starts at `0.1.0`.
+Both packages carry `apocalypse-bug-review`, `delta-review`, and `grill-me` — same skill names and expected outcomes, but separate `SKILL.md` files. They are released independently: the Claude Code package is at `1.8.0`, while the Codex package starts at `0.1.0`.
 
 `mp3-tags` and `youtube-mp3` ship **for Claude Code only, on purpose**. Both are thin wrappers around a bundled script, and their value depends on the script running unattended: Claude Code puts the plugin's `bin/` on `PATH` and lets `youtube-mp3` install its own `yt-dlp` and `deno`. Under Codex's sandbox every network fetch and every write outside the workspace needs an up-front approval, and a skill may not install its own dependencies — so the Codex ports were mostly instructions about requesting authorization, wrapped around a script that refuses to do the one thing that made the skill worth having. Rather than maintain a worse second copy, audio work stays on Claude Code.
 
