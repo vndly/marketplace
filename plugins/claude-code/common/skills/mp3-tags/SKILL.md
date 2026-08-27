@@ -22,7 +22,7 @@ mp3_tags.py "<path/to/ARTIST - TITLE.mp3>"
 ## Report the result to the user by exit code
 - **0 — success.** Tell the user Artist and Title were set and all other fields emptied (the backup was already deleted). The script prints the values used.
 - **3 — pattern error.** The filename does **not** follow `[ARTIST] - [TITLE].mp3`. **Interrupt and tell the user** the file doesn't follow the required pattern. Do not retry, rename, or guess values.
-- **1 — tagging failed.** The file was restored from the backup and the backup deleted, so the file is unchanged. Relay the printed error.
+- **1 — backup or tagging failed.** The file on disk is unchanged: either the backup could not be made, or tagging failed and the file was restored from the backup. Relay the printed error.
 - **2 — usage error.** File not found, or `mutagen` is missing (`pip install --user mutagen`).
 
 ## Dependencies

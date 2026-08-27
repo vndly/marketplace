@@ -1,16 +1,14 @@
 {
-  "name": "vndly",
-  "description": "A marketplace for Claude Code Plugins",
+  "name": "vndly-claude",
+  "description": "Claude Marketplace",
   "owner": {
-    "name": "vndly",
-    "email": "vndly@email.com"
+    "name": "vndly"
   },
   "plugins": [
     {
       "name": "common",
       "description": "Common Claude Plugins",
-      "version": "1.7.0",
-      "source": "./common",
+      "source": "./plugins/claude-code/common",
       "repository": "https://github.com/vndly/marketplace"
     }
   ]

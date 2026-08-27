@@ -1,0 +1,25 @@
+{
+  "name": "common",
+  "version": "1.7.0",
+  "description": "Common Plugin",
+  "author": {
+    "name": "vndly"
+  },
+  "repository": "https://github.com/vndly/marketplace",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Common",
+    "shortDescription": "Review and planning workflows",
+    "longDescription": "Provider-native Codex skills for code review and design interviews.",
+    "developerName": "vndly",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Review my current code changes.",
+      "Grill me about this design."
+    ]
+  }
+}

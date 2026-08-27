@@ -76,4 +76,4 @@ yt-dlp \
   --print after_move:filepath \
   -P "$OUT_DIR" \
   -o "%(title)s.%(ext)s" \
-  "$URL"
+  -- "$URL"

@@ -8,11 +8,12 @@ ID3v1, and any APEv2 tag).
 
 It backs the file up first, then:
   - on success, deletes the backup;
-  - on failure, restores the file from the backup and deletes it.
+  - on tagging failure, restores the file from the backup and deletes it.
+A backup that cannot be made leaves the file untouched and nothing behind.
 
 Exit codes:
   0  success        (tags written, backup deleted)
-  1  tagging failed (file restored from backup, backup deleted)
+  1  backup or tagging failed (the file on disk is unchanged)
   2  usage error    (bad args / not a file / 'mutagen' not installed)
   3  pattern error  (filename does not match "[ARTIST] - [TITLE].mp3")
 """
@@ -55,6 +56,26 @@ def write_tags(path, artist, title):
     tags.save(path, v1=0, v2_version=4)
 
 
+def create_backup(path):
+    """Copy `path` to a same-directory temp file and return its name.
+
+    Same directory so the later restore (os.replace) is atomic. Any failure
+    removes the temp file, so a failed backup leaves nothing behind.
+    """
+    directory = os.path.dirname(os.path.abspath(path))
+    fd, backup = tempfile.mkstemp(prefix=".mp3tags-", suffix=".bak", dir=directory)
+    os.close(fd)
+    try:
+        shutil.copy2(path, backup)  # copies content + mode + mtime
+    except Exception:
+        try:
+            os.remove(backup)
+        except OSError:
+            pass
+        raise
+    return backup
+
+
 def main(argv):
     if len(argv) != 2:
         print("usage: mp3_tags.py <file.mp3>", file=sys.stderr)
@@ -84,11 +105,15 @@ def main(argv):
         )
         return 2
 
-    # Back up in the same directory so the restore (os.replace) is atomic.
-    directory = os.path.dirname(os.path.abspath(path))
-    fd, backup = tempfile.mkstemp(prefix=".mp3tags-", suffix=".bak", dir=directory)
-    os.close(fd)
-    shutil.copy2(path, backup)  # copies content + mode + mtime
+    try:
+        backup = create_backup(path)
+    except Exception as e:
+        print(
+            f"FAILED: {type(e).__name__}: {e}\n"
+            "  Could not back up the file; nothing was changed.",
+            file=sys.stderr,
+        )
+        return 1
 
     try:
         write_tags(path, artist, title)

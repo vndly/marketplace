@@ -1,0 +1,7 @@
+interface:
+  display_name: "Apocalypse Bug Review"
+  short_description: "Run an exhaustive, adversarial defect audit"
+  default_prompt: "Use $apocalypse-bug-review to audit this codebase for verified defects."
+
+policy:
+  allow_implicit_invocation: false

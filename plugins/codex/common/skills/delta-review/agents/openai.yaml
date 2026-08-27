@@ -1,0 +1,7 @@
+interface:
+  display_name: "Delta Review"
+  short_description: "Review changes for defects and regressions"
+  default_prompt: "Use $delta-review to review my current changes and fix confirmed defects."
+
+policy:
+  allow_implicit_invocation: true
