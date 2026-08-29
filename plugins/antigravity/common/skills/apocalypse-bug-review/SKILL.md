@@ -33,18 +33,18 @@ Audit the user-selected scope, determined at the start of the run (see Phase 0, 
 - **Session changes:** first-party files modified during the current chat session.
 - **Named paths:** the files, directories, or globs the user provides.
 
-The selected scope defines the **seed set** of files. For every scope except *Whole codebase*, the **included set** is the seed set plus its direct first-party dependents — callers of changed functions and consumers of changed types, schemas, or configuration — expanded one hop out, so defects the change introduces in other files remain in scope. Meaningful flows that traverse the seed set are traced end to end even where they extend beyond one hop. For *Whole codebase*, the included set is every included first-party file and the meaningful-flow inventory is every meaningful flow.
+The selected scope defines the **seed set** of files. For every scope except _Whole codebase_, the **included set** is the seed set plus its direct first-party dependents — callers of changed functions and consumers of changed types, schemas, or configuration — expanded one hop out, so defects the change introduces in other files remain in scope. Meaningful flows that traverse the seed set are traced end to end even where they extend beyond one hop. For _Whole codebase_, the included set is every included first-party file and the meaningful-flow inventory is every meaningful flow.
 
 The initial worktree snapshot and every preservation guarantee always cover the entire worktree regardless of scope: scope narrows only what is inspected, never what is preserved. The include and exclude rules below act as filters within the included set, the coverage invariants apply to the included set, and for non-whole scopes the meaningful-flow inventory consists of the flows that traverse the seed set.
 
-*Branch diff*, *Uncommitted changes*, *Unpushed commits*, and *Session changes* are **change-based scopes**. Each has a **baseline state**, the committed or worktree state the reviewed changes are measured against:
+_Branch diff_, _Uncommitted changes_, _Unpushed commits_, and _Session changes_ are **change-based scopes**. Each has a **baseline state**, the committed or worktree state the reviewed changes are measured against:
 
 - **Branch diff:** the merge-base commit of the base ref and `HEAD`.
 - **Uncommitted changes:** `HEAD`.
 - **Unpushed commits:** the upstream commit `@{upstream}`.
 - **Session changes:** the worktree state at the start of the session. When it cannot be reconstructed, use the closest available baseline, normally `HEAD`, and record the substitution under **Exclusions and Limitations**.
 
-For a change-based scope, report only **introduced defects**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. *Whole codebase* and *Named paths* have no baseline: every defect established within their included set is reportable.
+For a change-based scope, report only **introduced defects**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. _Whole codebase_ and _Named paths_ have no baseline: every defect established within their included set is reportable.
 
 For this audit:
 
@@ -132,7 +132,7 @@ Use Antigravity subagents in parallel when they are available and permitted. Spa
    - When no base ref was detected, state that in the question and call `ask_question` with the options `(Recommended) Whole codebase`, `Local changes`, and `Diff vs a branch`. If `Diff vs a branch`, ask a follow-up question with the options `(Recommended) develop` and `main`, accepting a user-supplied ref through the tool's free-text write-in option.
    - If `Local changes`, ask a follow-up question with the options `(Recommended) uncommitted changes including untracked`, `unpushed commits`, and `this chat session's changes`.
    - If the free-text answer names paths, confirm the exact paths or globs in prose before resolving them, since a fixed option list cannot capture free-form paths.
-   The plain-text fallback must state what the choice changes, list all four concrete scope types, mark the detected branch diff as recommended when one exists (otherwise mark `Whole codebase` as recommended), and explicitly accept a free-form answer. In a non-interactive run where no response can be provided, default to the detected branch diff, or to `Whole codebase` when no base ref was detected. Record the chosen scope.
+     The plain-text fallback must state what the choice changes, list all four concrete scope types, mark the detected branch diff as recommended when one exists (otherwise mark `Whole codebase` as recommended), and explicitly accept a free-form answer. In a non-interactive run where no response can be provided, default to the detected branch diff, or to `Whole codebase` when no base ref was detected. Record the chosen scope.
 4. Resolve the scope to the seed set with explicit, recorded commands: the merge-base diff `git diff <base>...HEAD --name-only` for a branch diff; `git diff HEAD --name-only` plus untracked files from `git status --porcelain` for uncommitted changes; `git diff @{upstream}..HEAD --name-only` for unpushed commits, falling back to whole codebase when no upstream is configured; the files edited during this session for session changes; or the literal paths for named paths. For every scope except whole codebase, expand the seed set one hop to the included set by adding the direct first-party dependents of the seed, and record both the seed set and the expansion. For a change-based scope, also resolve and record the baseline state defined in Scope, as a commit hash where one exists.
 5. Read the Antigravity instruction chain applicable to every included path: `GEMINI.md`, `AGENTS.md`, and rules under `.agents/rules/*.md` in each directory from the repository root toward that path. Then read project documentation, architecture material, schemas, and key contracts.
 6. Build a path-level inventory of included first-party files, with an inspected or skipped status for every included path, an exact included-file count, and explicit excluded paths or categories, grouped into meaningful modules and flows. Record deterministic selection rules and commands, exact counts per module, and a manifest digest so the included inventory can be reproduced and verified against the initial worktree snapshot.
@@ -239,25 +239,37 @@ Use this top-level structure for `BUG_FINDINGS.md`, omitting only severity secti
 # Bug Findings
 
 ## Critical
+
 ### [stable-id] Short title
+
 ...
 
 ## High
+
 ...
 
 ## Medium
+
 ...
 
 ## Low
+
 ...
 
 ## Audit Details
+
 ### Audit Status
+
 ### Initial Worktree Snapshot
+
 ### Audit Coverage
+
 ### Candidate Dispositions
+
 ### Verification Performed
+
 ### Exclusions and Limitations
+
 ### Summary
 ```
 

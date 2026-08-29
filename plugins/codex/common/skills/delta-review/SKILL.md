@@ -22,12 +22,12 @@ This is a static reading pass. Do **not** run builds, tests, linters, formatters
   - A **path** otherwise. A name that is both a branch and a file reads as the revision by this order — say which reading you took.
 
   At most one range or revision may appear; if two do, say so and stop. Paths may accompany one, and restrict the change set without moving the base. Then:
-
   - **No argument** — base is `HEAD`. Change set: `git diff HEAD`, plus new untracked files from `git ls-files --others --exclude-standard`.
   - **A range, `A..B`** — base is `A`. Change set: `git diff A..B`. Committed work only; do not collect untracked files. For a three-dot range (`A...B`), the base is `git merge-base A B` and the change set is `git diff A...B` — the comparison is against the branch point, not `A`'s tip.
   - **A single revision, `R`** (`HEAD~3`, `main`) — base is `R`, tip is `HEAD`. Change set: `git diff R HEAD`. Committed work only; do not collect untracked files. When `R` resolves to `HEAD` itself the diff is empty by construction, and the caller meant the work in front of them: take the no-argument form instead, and say that you did.
   - **One or more paths** — base is `HEAD`, change set as for no argument but restricted to those paths; untracked files under them still count.
   - **Paths with a range or revision** — that form's base and change set, restricted by appending `-- <paths>` (`git diff A..B -- <paths>`). Committed work only, as the form itself is.
+
 - Say which base you resolved and whether untracked files are in scope.
 - **Bound what you read.** Untracked files arrive whole rather than as diffs, so one large file can crowd out the review itself. Skip binaries, and minified or generated bundles — judge by extension and by the first few lines. Read the first ~200 lines of anything longer than roughly 1000 and say you truncated it. When the list runs long, name every file but read only those plausibly under review. State every skip and truncation: an unread file is not a reviewed file, and nothing later may imply it was.
 - If the change set is empty, report LGTM and stop.
@@ -202,6 +202,7 @@ Sort every surviving finding into one of three buckets:
   - a **convention violation** from a lens, where you can state all three of: the **rule the brief states**, the **changed code that breaks it**, and the **conforming form** it should take instead. Demand no runtime symptom here — a layering, registration, or naming rule can be broken by code that runs perfectly.
 
   Citing a location is not enough on its own: a real line number can anchor an unreal defect, and a real rule can be cited against code that does not actually break it.
+
 - **Unverified suspicion** — plausible and consequential, but not demonstrable from the code alone. State the risk and the **specific check that would settle it**: a test to run, a state to reproduce, a file or system to inspect. Two routes lead here: a reviewer who could not demonstrate the problem (step 3), and a Critical or Warning its skeptic returned `unsettled` (step 5), which arrives with its check already named. Never inflate one into a Confirmed finding, and never silently drop one.
 - **Nit** — cosmetic or preference-level material a lens asked to have surfaced: real, but neither a defect nor worth an edit. Only a lens brief produces one; the fixed reviewers in 4a and 4b never do, since step 3 keeps them off style and preference. Reported, never fixed.
 
@@ -235,7 +236,7 @@ Omit any section that is empty. If all are empty, say LGTM and skip the tables. 
 
 ## 8. Fix, self-check, then hand back honestly
 
-**Fix only code you reviewed.** For the no-argument and path forms the working tree *is* the reviewed change set, so fix freely. The committed forms — a single revision, or a two- or three-dot range — reviewed history, and what is on disk need not match it. Before touching a file for those, run both checks:
+**Fix only code you reviewed.** For the no-argument and path forms the working tree _is_ the reviewed change set, so fix freely. The committed forms — a single revision, or a two- or three-dot range — reviewed history, and what is on disk need not match it. Before touching a file for those, run both checks:
 
 - the tip resolves to `HEAD` — `git rev-parse <tip>` against `git rev-parse HEAD`;
 - the tree is clean — `git diff --quiet HEAD` succeeds.

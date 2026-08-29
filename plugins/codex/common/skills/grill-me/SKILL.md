@@ -10,6 +10,7 @@ First, establish what the user is optimizing for and what is fixed: the constrai
 Map the plan as a design tree: every decision branches into the decisions that hang off it. Ask the highest-fanout question first — the one whose answer constrains or invalidates the most other decisions. Each answer reshapes the tree: a settled decision pushes the frontier outward and unblocks the questions that depended on it. Recompute the frontier after every answer and pick again. Cheap-to-reverse details go last, or not at all.
 
 Ask questions one at a time. For each question:
+
 - Present your recommended answer first, with a brief justification, then list alternatives
 - Provide 2-3 mutually exclusive options that differ in consequence, not wording; say what each costs or rules out
 - Name the silent default: what the user would get if the question were never asked
