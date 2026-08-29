@@ -41,10 +41,10 @@ The initial worktree snapshot and every preservation guarantee always cover the 
 _Branch diff_, _From commit_, _Uncommitted changes_, _Unpushed commits_, and _Session changes_ are **change-based scopes**. Each has a **baseline state**, the committed or worktree state the reviewed changes are measured against:
 
 - **Branch diff:** the merge-base commit of the base ref and `HEAD`.
-- **From commit:** the named commit's first parent, `<commit>~1`. When the named commit is a merge, `~1` selects its first parent. When `<commit>~1` does not resolve, check `git rev-parse --is-shallow-repository` before concluding the commit is the root: in a shallow repository an unresolvable parent means the parents were never fetched, and a boundary commit is indistinguishable from a root commit by parent lookup alone, so deepen with `git fetch --unshallow` or refuse the scope and re-ask, and never substitute the empty tree there. Only in a non-shallow repository, where the commit genuinely has no parent, use the empty tree `4b825dc642cb6eb9a060e54bf8d69288fbee4904` as the baseline and record the substitution under **Exclusions and Limitations**.
+- **From commit:** the named commit's first parent, `<commit>~1`. When the named commit is a merge, `~1` selects its first parent. When `<commit>~1` does not resolve, check `git rev-parse --is-shallow-repository` before concluding the commit is the root: in a shallow repository an unresolvable parent means the parents were never fetched, and a boundary commit is indistinguishable from a root commit by parent lookup alone, so deepen with `git fetch --unshallow` or refuse the scope and re-ask, and never substitute the empty tree there. Only in a non-shallow repository, where the commit genuinely has no parent, use the empty tree `4b825dc642cb6eb9a060e54bf8d69288fbee4904` as the baseline and state the substitution in the chat summary.
 - **Uncommitted changes:** `HEAD`.
 - **Unpushed commits:** the upstream commit `@{upstream}`.
-- **Session changes:** the worktree state at the start of the session. When it cannot be reconstructed, use the closest available baseline, normally `HEAD`, and record the substitution under **Exclusions and Limitations**.
+- **Session changes:** the worktree state at the start of the session. When it cannot be reconstructed, use the closest available baseline, normally `HEAD`, and state the substitution in the chat summary.
 
 For a change-based scope, report only **introduced defects**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. _Whole codebase_ and _Named paths_ have no baseline: every defect established within their included set is reportable.
 
@@ -82,7 +82,7 @@ Count each included file path and each meaningful flow exactly once. Maintain th
 - A **finding** is a candidate whose code-path reachability and incorrect result are established under a concrete or plausible stated trigger and that, in a change-based scope, the reviewed changes introduce. Every such verified root cause must be represented in `BUG_FINDINGS.md`; merge candidates that share the same root cause into one finding.
 - A candidate is **refuted** when a guard, invariant, caller contract, unreachable state, or other evidence prevents the suspected incorrect behavior.
 - A candidate is **pre-existing** when its defect path is established but the same incorrect behavior reproduces in the baseline state of a change-based scope, so the reviewed changes did not introduce it.
-- A candidate is **unverified** when verification is blocked or cannot establish the defect path. Do not report it as a finding; record the location, suspected risk, blocker, and unresolved question under **Exclusions and Limitations**.
+- A candidate is **unverified** when verification is blocked or cannot establish the defect path. Do not report it as a finding; state the location, suspected risk, blocker, and unresolved question in the chat summary.
 
 Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient candidate ledger in memory or outside the repository. For each candidate, record its ID, location, taxonomy category, suspected trigger and failure path, verification evidence, and final disposition:
 
@@ -92,7 +92,7 @@ Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient 
 - **Pre-existing:** the defect path is real, but the reviewed changes did not introduce it.
 - **Unverified:** verification remained blocked or inconclusive.
 
-Maintain this accounting invariant, where each term counts candidates with that disposition: `total candidates = findings + merged + refuted + pre-existing + unverified`. The report's finding list must reconcile with this table: `reported findings = findings`, since each Finding-disposition candidate becomes exactly one reported finding while merged candidates fold into an existing finding rather than adding new ones. Preserve a compact candidate disposition table in `BUG_FINDINGS.md`; remove only the more detailed working ledger. Pre-existing candidates appear only as rows in that table, never as findings and never described anywhere else in the report or the chat summary.
+Maintain this accounting invariant, where each term counts candidates with that disposition: `total candidates = findings + merged + refuted + pre-existing + unverified`. The reported finding list must reconcile with the ledger: `reported findings = findings`, since each Finding-disposition candidate becomes exactly one reported finding while merged candidates fold into an existing finding rather than adding new ones. The ledger stays transient and is never written to `BUG_FINDINGS.md`; report only its disposition counts, in the chat summary. Pre-existing candidates are never reported as findings and are never described anywhere in the report or the chat summary; they survive only inside the aggregate disposition counts.
 
 ## Defect Taxonomy
 
@@ -179,12 +179,12 @@ When independent collaboration agents are available and permitted, use `spawn_ag
 
 ### Phase 3 - Complete and Synthesize
 
-Repeat additional discovery passes until one produces no new candidates; designate that last pass as the final discovery pass. If constraints prevent another pass, mark the audit Partial. Resolve every candidate as finding, merged, refuted, pre-existing, or unverified. Verify the candidate accounting invariant and record exact disposition counts. Then deduplicate findings, merge shared root causes, assign final confidence and severity, and write the report. Before completion, perform a final comparison against the initial worktree snapshot, record its result and the snapshot-manifest digest in the report, preserve the compact candidate disposition table, and remove external snapshot metadata, the disposable verification workspace, and any detailed on-disk candidate ledger.
+Repeat additional discovery passes until one produces no new candidates; designate that last pass as the final discovery pass. If constraints prevent another pass, mark the audit Partial. Resolve every candidate as finding, merged, refuted, pre-existing, or unverified. Verify the candidate accounting invariant and record exact disposition counts. Then deduplicate findings, merge shared root causes, assign final confidence and severity, and write the report. Before completion, perform a final comparison against the initial worktree snapshot, state its result and the snapshot-manifest digest in the chat summary, and remove external snapshot metadata, the disposable verification workspace, and the candidate ledger.
 
 Assign one audit status:
 
-- **Complete:** within the selected scope, the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, was refuted, or was dispositioned pre-existing against the baseline state; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The report must contain enough inventory, flow, and candidate-disposition evidence to reproduce every exact count.
-- **Partial:** any Complete condition was not met. State each unmet condition and do not claim the audit was exhaustive or complete.
+- **Complete:** within the selected scope, the included-file inventory and meaningful-flow inventory are enumerated with exact counts; every included file was inspected; every meaningful flow was traced; every candidate became a finding, was merged, was refuted, or was dispositioned pre-existing against the baseline state; no unverified candidates remain; the dedicated high-risk pass and all taxonomy-category inspections were completed; a separate refutation attempt was performed for every finding; a final discovery pass produced no new candidates; and the final worktree comparison confirmed that no non-exempt captured pre-existing state changed. The audit must retain enough inventory, flow, and candidate-disposition evidence to reproduce every count stated in the chat summary.
+- **Partial:** any Complete condition was not met. State each unmet condition in the chat summary and do not claim the audit was exhaustive or complete.
 
 ## Verification and Ranking
 
@@ -210,7 +210,7 @@ Assign severity from the worst impact supported by a realistic trigger and state
 ## Output
 
 - **Report only.** Do not fix product code or configuration.
-- **Introduced defects only.** For a change-based scope, report only defects the reviewed changes introduce. Pre-existing defects appear solely as rows in the candidate disposition table, and are not described in the findings, the summary, or the chat response.
+- **Introduced defects only.** For a change-based scope, report only defects the reviewed changes introduce. Pre-existing defects are never described in the findings, the summary, or the chat response; they survive only inside the aggregate disposition counts.
 - `BUG_FINDINGS.md` is the sole permitted persistent report artifact. At snapshot time, detect and hash any existing report, then read it to retain stable IDs for recurring root causes.
 - Do not replace a pre-existing `BUG_FINDINGS.md` without explicit user approval; approval may be supplied with the skill invocation. If approval is unavailable or denied, do not modify it, mark the audit Partial, and provide the blocked report summary in chat. Otherwise, replace its contents and write it even when no findings survive. Immediately before replacement, verify that its current hash still matches the snapshot; if it appeared or changed after the snapshot, treat it as user-authored work and obtain new approval before replacing it.
 - Do not intentionally modify any other pre-existing file. Remove only temporary artifacts created by the audit, and preserve the captured initial worktree state.
@@ -259,31 +259,11 @@ Use this top-level structure for `BUG_FINDINGS.md`, omitting only severity secti
 
 ...
 
-## Audit Details
-
-### Audit Status
-
-### Initial Worktree Snapshot
-
-### Audit Coverage
-
-### Candidate Dispositions
-
-### Verification Performed
-
-### Exclusions and Limitations
-
-### Summary
+## Summary
 ```
 
-Populate the final report sections as follows:
+Populate the final report section as follows:
 
-- **Audit Status:** Complete | Partial, including unmet completion conditions for a Partial audit.
-- **Initial Worktree Snapshot:** repository path, branch, commit, initial worktree state, a digest of the external snapshot manifest, captured and excluded ignored-path categories, approval status for replacing any pre-existing report, and the result of the final comparison against that snapshot.
-- **Audit Coverage:** the selected scope and how it was resolved — the base ref with the candidates considered and how it was detected, the baseline state used for attribution, paths, or git commands used, the seed set, and the one-hop dependent expansion for non-whole scopes; exact included, inspected, and skipped first-party file counts; excluded paths or categories and their counts when practical; inspected modules; deterministic inventory selection rules and commands, exact counts per module, the inventory-manifest digest, and every skipped included path; and a table of every meaningful-flow ID, entry point, material result or side effect, and status, with exact total, traced, and skipped flow counts. Confirm both coverage accounting invariants and summarize coverage of every taxonomy category.
-- **Candidate Dispositions:** a compact table containing every candidate ID, primary location, category, disposition, and resulting finding ID or concise disposition reason. Include exact counts for findings, merged, refuted, pre-existing, and unverified, and confirm both the accounting invariant and that the reported-finding count equals the findings count.
-- **Verification Performed:** tests, commands, reproductions, and refutation work.
-- **Exclusions and Limitations:** skipped areas, unverified candidates, unavailable tooling, blocked verification, and unresolved uncertainty.
-- **Summary:** finding counts by severity, by confidence, and as a severity-confidence matrix, plus the unique affected files. Use a matrix table with severity rows; `High`, `Medium`, and `Low` confidence columns; and row and column totals.
+- **Summary:** finding counts by severity, finding counts by confidence, and a severity-confidence matrix. Use a matrix table with severity rows and `High`, `Medium`, and `Low` confidence columns; include no row or column totals, no affected-file list, and nothing else. Everything else the audit established — status, scope resolution, coverage counts, candidate dispositions, verification performed, exclusions, and limitations — belongs in the chat summary, never in `BUG_FINDINGS.md`.
 
-End the chat response with a brief inline summary containing the audit status; finding counts by severity and confidence; candidate disposition counts; included, inspected, and skipped file and flow counts; the affected-file count and most important affected files; top findings; and a link to `BUG_FINDINGS.md` when it was written. If no findings survive, say so plainly and summarize coverage and limitations without claiming the codebase is universally bug-free.
+End the chat response with an inline summary containing the audit status and, for a Partial audit, each unmet condition; finding counts by severity and confidence; candidate disposition counts; included, inspected, and skipped file and flow counts; the affected-file count and most important affected files; every unverified candidate with its location, suspected risk, and blocker; any baseline substitution; skipped areas, unavailable tooling, and blocked verification; the result of the final worktree comparison and the snapshot-manifest digest; top findings; and a link to `BUG_FINDINGS.md` when it was written. This summary is the only place the audit trail is reported, so it must be complete enough to reproduce every count it states. If no findings survive, say so plainly and summarize coverage and limitations without claiming the codebase is universally bug-free.
