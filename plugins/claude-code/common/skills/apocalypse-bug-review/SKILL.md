@@ -172,7 +172,8 @@ For every candidate:
 3. Try to refute it by finding a preventing invariant, guard, contract, or unreachable condition.
 4. For a change-based scope, attribute it: decide whether the same incorrect behavior occurs in the baseline state, by reading the baseline version of every location on the defect path with `git show <baseline>:<path>` or `git diff <baseline>...HEAD -- <path>` and, where safe and useful, by exercising the baseline in the disposable verification workspace. Dispose of it as `Pre-existing` when the baseline exhibits the same incorrect behavior, and record the baseline evidence for that decision. Treat it as introduced when the baseline is correct because the defect path was unreachable, the guard was effective, or the contract held there.
 5. Where safe and useful, confirm it with an existing test, isolated scratch test, REPL, or focused command.
-6. Record evidence and assign a disposition in the candidate ledger.
+6. Assess Likelihood: determine how often this code path executes in normal usage (High/Medium/Low per the heuristics in Verification and Ranking). Use evidence from call sites, control flow, and feature usage observed during inspection. Document the reasoning briefly.
+7. Record evidence, Likelihood, and assign a disposition in the candidate ledger.
 
 Verification commands run in the audited worktree must be read-only and must not be expected to rewrite files or modify external state. Run any command expected or reasonably likely to write in the disposable verification workspace. Immediately before and after each verification command or logically inseparable command batch run in the audited worktree, compare the worktree status, staged- and unstaged-diff hashes, and captured file manifest with the initial snapshot, excluding the permitted skill-owned `BUG_FINDINGS.md`. Remove only scratch artifacts created by the audit. If an unexpected change cannot be restored exactly without disturbing pre-existing work, stop that verification path and record the limitation.
 
@@ -208,6 +209,16 @@ Assign severity from the worst impact supported by a realistic trigger and state
 - **Medium:** recoverable incorrect behavior, degraded non-core functionality, or failure limited to an edge case with meaningful impact.
 - **Low:** minor behavioral defect with limited impact.
 
+### Likelihood - How Often Does It Occur in Real Use?
+
+Assess the probability that a user will encounter this bug during normal usage. Likelihood reflects code-path execution frequency, not the severity of impact if triggered. Use generic heuristics applicable across projects:
+
+- **High Likelihood:** code on the main user path — request handlers, parsing, core lookups, features most users exercise.
+- **Medium Likelihood:** secondary operations — less-used features, some error handling, plausible but infrequent code paths.
+- **Low Likelihood:** edge cases, rarely-used configuration, deep error handling, code paths triggered only by unusual conditions.
+
+Likelihood applies uniformly to all findings, including security and data-loss defects. A rare but critical bug is still rare — it belongs in findings, but Likelihood is honest about trigger frequency. For each finding, document 1–2 sentences explaining the Likelihood reasoning (e.g., "High Likelihood: bug is in request path, touched by most users" or "Low Likelihood: triggered only during unusual network failure cascades").
+
 ## Output
 
 - **Report only.** Do not fix product code or configuration.
@@ -215,7 +226,7 @@ Assign severity from the worst impact supported by a realistic trigger and state
 - `BUG_FINDINGS.md` is the sole permitted persistent report artifact. At snapshot time, detect and hash any existing report, then read it to retain stable IDs for recurring root causes.
 - Do not replace a pre-existing `BUG_FINDINGS.md` without explicit user approval; approval may be supplied with the skill invocation. If approval is unavailable or denied, do not modify it, mark the audit Partial, and provide the blocked report summary in chat. Otherwise, replace its contents and write it even when no findings survive. Immediately before replacement, verify that its current hash still matches the snapshot; if it appeared or changed after the snapshot, treat it as user-authored work and obtain new approval before replacing it.
 - Do not intentionally modify any other pre-existing file. Remove only temporary artifacts created by the audit, and preserve the captured initial worktree state.
-- Order findings by Severity (`Critical`, `High`, `Medium`, `Low`), then by Confidence (`High`, `Medium`, `Low`) within each severity section.
+- Order findings by Severity (`Critical`, `High`, `Medium`, `Low`), then by Likelihood (`High`, `Medium`, `Low`) within each severity section.
 
 Use stable IDs in the form `[<tier>/<category>/<component>/<defect-slug>]`, separating the four fields with `/` and using lowercase ASCII kebab-case within each field so field boundaries stay unambiguous:
 
@@ -232,6 +243,7 @@ Each finding must contain:
 - **Location:** one primary `path/to/file:line` and any related locations needed to trace the defect.
 - **Severity:** Critical | High | Medium | Low.
 - **Confidence:** High | Medium | Low.
+- **Likelihood:** High | Medium | Low, with 1–2 sentences explaining the reasoning (e.g., execution frequency, code-path context).
 - **Defect:** what is wrong and the incorrect resulting behavior.
 - **Trigger:** the input, sequence, state, environment, or interleaving that activates it.
 - **Evidence / verification:** the traced path, reproduction, command, refutation attempt, and any remaining assumptions.
@@ -265,6 +277,6 @@ Use this top-level structure for `BUG_FINDINGS.md`, omitting only severity secti
 
 Populate the final report section as follows:
 
-- **Summary:** finding counts by severity, finding counts by confidence, and a severity-confidence matrix. Use a matrix table with severity rows and `High`, `Medium`, and `Low` confidence columns; include no row or column totals, no affected-file list, and nothing else. Everything else the audit established — status, scope resolution, coverage counts, candidate dispositions, verification performed, exclusions, and limitations — belongs in the chat summary, never in `BUG_FINDINGS.md`.
+- **Summary:** finding counts by severity, finding counts by confidence, Likelihood distribution, and a severity-confidence matrix. Use a matrix table with severity rows and `High`, `Medium`, and `Low` confidence columns; include no row or column totals, no affected-file list, and nothing else. Then list Likelihood counts separately (e.g., "By Likelihood: High (4 findings), Medium (5 findings), Low (3 findings)"). Everything else the audit established — status, scope resolution, coverage counts, candidate dispositions, verification performed, exclusions, and limitations — belongs in the chat summary, never in `BUG_FINDINGS.md`.
 
 End the chat response with an inline summary containing the audit status and, for a Partial audit, each unmet condition; finding counts by severity and confidence; candidate disposition counts; included, inspected, and skipped file and flow counts; the affected-file count and most important affected files; every unverified candidate with its location, suspected risk, and blocker; any baseline substitution; skipped areas, unavailable tooling, and blocked verification; the result of the final worktree comparison and the snapshot-manifest digest; top findings; and a link to `BUG_FINDINGS.md` when it was written. This summary is the only place the audit trail is reported, so it must be complete enough to reproduce every count it states. If no findings survive, say so plainly and summarize coverage and limitations without claiming the codebase is universally bug-free.
