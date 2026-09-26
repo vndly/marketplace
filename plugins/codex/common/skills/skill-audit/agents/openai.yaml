@@ -1,0 +1,7 @@
+interface:
+  display_name: "Skill Audit"
+  short_description: "Audit a skill for defects and improvements"
+  default_prompt: "Use $skill-audit to audit a skill for verified defects and improvements."
+
+policy:
+  allow_implicit_invocation: false
