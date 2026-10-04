@@ -109,6 +109,7 @@ Inspect every category in all three taxonomy tiers. Assign each finding the tier
 - **Concurrency:** races, deadlocks, livelocks, missing synchronization, wrong executors, unhandled cancellation, non-atomic check-then-act sequences, unsafe lazy initialization, and failures hidden by fire-and-forget work.
 - **Resource management:** leaked handles, streams, sockets, listeners, subscriptions, timers, temporary files, unbounded collections, and missing cleanup on failure paths.
 - **State and lifecycle:** stale state, invalid transitions, use-after-dispose, initialization-order errors, reentrancy, cache invalidation, double initialization, and mutation during iteration.
+- **Performance and scaling:** a query, network, or disk call per item inside a loop, batched or cached work now done per item, repeated recomputation of the same expensive result, and quadratic or worse work over input whose size callers or users control. Report only when the cost grows with input size on a reachable path and causes a timeout, outage, or user-visible slowdown; never micro-optimizations.
 
 ### Tier B - Contracts, Data Integrity, and Security
 
@@ -160,6 +161,7 @@ For every meaningful module or flow, ask:
 - Can a failure surface as success or leave partial state?
 - Which concurrency interleaving breaks this?
 - Is every acquired resource released on every path?
+- Which input size makes this path's cost grow faster than its input?
 - Do caller and callee agree on units, ranges, nullability, indexing, and ownership?
 - Is every dispatch case handled?
 - Can untrusted input reach a dangerous sink?

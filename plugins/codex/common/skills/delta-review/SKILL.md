@@ -58,6 +58,7 @@ Every reviewer, fixed or lens, reports high-confidence defects in the changed co
 - use the wrong value, or execute operations in the wrong order
 - violate a caller, consumer, or nullability assumption
 - contradict the behavior the changed code itself describes
+- make cost grow with input size on a reachable path — a query, network, or disk call per item inside a loop, batched or cached work now done per item, or quadratic work over input whose size callers or users control. Never a micro-optimization
 
 Do not expand past your assigned brief into style, readability, refactoring preference, or missing tests without a concrete defect. Before reporting anything, read the surrounding code and confirm the problem is real and not already handled elsewhere.
 
@@ -136,7 +137,7 @@ Then the tables, at most one sentence per cell:
 | :--- | :--- | :--- | :--- |
 ```
 
-Severity: **Critical** (causes a crash, wrong behavior, data loss, or breaks something that worked) · **Warning** (probable defect, latent hazard, or a confirmed convention violation with no runtime symptom) · **Nit** (never fixed). Category: name the pass or lens it came from — `Defect`, `Regression`, `Contract`, `Security`, `Resource`, plus whatever categories the lens defines.
+Severity: **Critical** (causes a crash, wrong behavior, data loss, or breaks something that worked) · **Warning** (probable defect, latent hazard, or a confirmed convention violation with no runtime symptom) · **Nit** (never fixed). Category: name the pass or lens it came from — `Defect`, `Regression`, `Contract`, `Security`, `Resource`, `Performance`, plus whatever categories the lens defines.
 
 Omit any section that is empty. If all are empty, say LGTM and skip the tables. End with one line: `X critical, Y warnings, Z nits across N files; W unverified suspicions.`
 
