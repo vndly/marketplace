@@ -26,11 +26,11 @@ If no point needs a question, go straight to the final report.
 - Give 2–4 options that differ in what you will do. Put the recommended option first and append `(Recommended)` to its label, using the point's own recommendation when it has one. Each description says what the option does and what it costs.
 - Offer a "leave it" option only when doing nothing is a real choice.
 - Do not add an `Other` option; the tool supplies one. Follow a free-text answer as written; if it is unclear, ask a follow-up about that point alone.
-- Change nothing until every question is answered.
+- Change nothing until every question is answered. Then check the answers against each other; if two conflict or one makes another moot, ask one follow-up naming both, and carry out neither until I answer.
 
 ## Carry out the answers
 
-- Carry out every chosen option in one pass, in list order. Choosing an option is my go-ahead for exactly what it says, including commits, pushes, or deletions it names; anything beyond it still needs my permission.
+- Carry out every chosen option in one pass, in list order. Choosing an option is my go-ahead for exactly what it says, including commits, pushes, or deletions it names; anything beyond it still needs my permission. Choosing an option also approves the plan its description lays out; if carrying it out needs a decision the option did not cover, do not guess: finish the others and report that decision as a new point.
 - Drop the points I chose to leave.
 - If an answer cannot be carried out as chosen, do not improvise a substitute: finish the others and report it.
 - My usual rules still apply while you work, including verification.

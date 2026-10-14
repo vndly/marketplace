@@ -27,11 +27,11 @@ If no point needs a question, go straight to the final report.
 - When `request_user_input` is available, put as many questions in each call as it accepts, up to 4. Append `(Recommended)` to the recommended label, keep each header to 12 characters or fewer, and explain each option in its description. Do not add an `Other` option; the tool supplies the free-form choice.
 - When `request_user_input` is unavailable, ask all the questions in one message, numbered, with their options and recommendations. Explicitly allow free-form answers, then end the turn and wait.
 - Follow a free-form answer as written; if it is unclear, ask a follow-up about that point alone.
-- Change nothing until every question is answered.
+- Change nothing until every question is answered. Then check the answers against each other; if two conflict or one makes another moot, ask one follow-up naming both, and carry out neither until the user answers.
 
 ## Carry out the answers
 
-- Carry out every chosen option in one pass, in list order. Choosing an option is the user's go-ahead for exactly what it says, including commits, pushes, or deletions it names; anything beyond it still needs their permission.
+- Carry out every chosen option in one pass, in list order. Choosing an option is the user's go-ahead for exactly what it says, including commits, pushes, or deletions it names; anything beyond it still needs their permission. Choosing an option also approves the plan its description lays out; if carrying it out needs a decision the option did not cover, do not guess: finish the others and report that decision as a new point.
 - Drop the points the user chose to leave.
 - If an answer cannot be carried out as chosen, do not improvise a substitute: finish the others and report it.
 - The user's usual instructions still apply while you work, including verification.
