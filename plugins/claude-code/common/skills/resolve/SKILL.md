@@ -22,7 +22,7 @@ If no point needs a question, go straight to the final report.
 ## Ask
 
 - One question per point, in list order, up to 4 questions per `AskUserQuestion` call.
-- Restate the point in plain words — what is wrong or open, and why it matters — instead of quoting it. Keep the header to 12 characters or fewer.
+- Start the question text with the point's own emoji (🚨, ⚠️, ✋, or 🔍), then restate the point in plain words — what is wrong or open, and why it matters — instead of quoting it. Keep the header to 12 characters or fewer.
 - Give 2–4 options that differ in what you will do. Put the recommended option first and append `(Recommended)` to its label, using the point's own recommendation when it has one. Each description says what the option does and what it costs.
 - Offer a "leave it" option only when doing nothing is a real choice.
 - Do not add an `Other` option; the tool supplies one. Follow a free-text answer as written; if it is unclear, ask a follow-up about that point alone.

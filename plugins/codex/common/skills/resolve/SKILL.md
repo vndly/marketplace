@@ -21,7 +21,7 @@ If no point needs a question, go straight to the final report.
 ## Ask
 
 - One question per point, in list order.
-- Restate the point in plain words — what is wrong or open, and why it matters — instead of quoting it.
+- Start the question text with the point's own emoji (🚨, ⚠️, ✋, or 🔍), then restate the point in plain words — what is wrong or open, and why it matters — instead of quoting it.
 - Give 2–4 options that differ in what you will do. Put the recommended option first, using the point's own recommendation when it has one, and say what each option does and what it costs.
 - Offer a "leave it" option only when doing nothing is a real choice.
 - When `request_user_input` is available, put as many questions in each call as it accepts, up to 4. Append `(Recommended)` to the recommended label, keep each header to 12 characters or fewer, and explain each option in its description. Do not add an `Other` option; the tool supplies the free-form choice.
