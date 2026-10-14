@@ -1,0 +1,7 @@
+interface:
+  display_name: "Resolve"
+  short_description: "Resolve the attention points from the last reply"
+  default_prompt: "Use $resolve to resolve the attention points from your last reply."
+
+policy:
+  allow_implicit_invocation: false
