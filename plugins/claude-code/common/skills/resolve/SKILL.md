@@ -1,7 +1,6 @@
 ---
 name: resolve
 description: Walk the user through the 🚨/⚠️/✋/🔍 attention points in Claude's latest reply that has them — one question per point that needs a decision — then carry out every answer in one pass. Use only when the user invokes it by name.
-disable-model-invocation: true
 ---
 
 Help me resolve the attention points from your latest reply: ask me about each one that needs a decision, then carry out what I chose.
