@@ -1,9 +1,9 @@
 ---
-name: fix-finding
+name: fix
 description: Takes one entry from the BUG_FINDINGS.md report written by apocalypse-bug-review — by ID, the next one in the report, or the pasted text of a whole entry — re-checks it against the current code, gives a verdict and a fix plan, and stops for approval. On approval, writes a test that fails before the fix and passes after, makes the fix, runs the covering tests and delta-review, and only then deletes the entry and refreshes the report's Summary. Never commits. Use only when the user invokes it by name.
 ---
 
-# Fix Finding
+# Fix
 
 Fix one finding from `BUG_FINDINGS.md`: check that it is real, agree the fix with the user, prove it with a test, and remove the entry only once the fix holds.
 
@@ -76,4 +76,4 @@ Report the outcome the way the user's instructions define, covering:
 - the files changed and what `delta-review` found;
 - whether the entry was deleted, or why it stayed;
 - remaining entries whose locations are in the files you changed, as possibly affected — never delete them;
-- the ID of the first entry left in the report other than the one just handled, with the prompt to fix it: `$fix-finding <id>`. When the handled entry stayed, add that `next` would pick it again.
+- the ID of the first entry left in the report other than the one just handled, with the prompt to fix it: `$fix <id>`. When the handled entry stayed, add that `next` would pick it again.

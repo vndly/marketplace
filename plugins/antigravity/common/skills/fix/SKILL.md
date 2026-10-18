@@ -1,9 +1,9 @@
 ---
-name: fix-finding
+name: fix
 description: Takes one entry from the BUG_FINDINGS.md report written by apocalypse-bug-review — by ID, the next one in the report, or the pasted text of a whole entry — re-checks it against the current code, gives a verdict and a fix plan, and stops for approval. On approval, writes a test that fails before the fix and passes after, makes the fix, runs the covering tests and delta-review, and only then deletes the entry and refreshes the report's Summary. Never commits. Use only when the user invokes it by name.
 ---
 
-# Fix Finding
+# Fix
 
 Fix one finding from `BUG_FINDINGS.md`: check that it is real, agree the fix with the user, prove it with a test, and remove the entry only once the fix holds.
 
