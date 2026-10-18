@@ -1,0 +1,7 @@
+interface:
+  display_name: "Fix Finding"
+  short_description: "Verify and fix one BUG_FINDINGS.md entry with a test"
+  default_prompt: "Use $fix-finding to verify and fix the next entry in BUG_FINDINGS.md."
+
+policy:
+  allow_implicit_invocation: false
