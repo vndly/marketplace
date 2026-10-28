@@ -1,0 +1,7 @@
+interface:
+  display_name: "Commit Message"
+  short_description: "Suggest a short commit message for uncommitted changes"
+  default_prompt: "Use $commit-message to suggest a commit message for my current changes."
+
+policy:
+  allow_implicit_invocation: true
