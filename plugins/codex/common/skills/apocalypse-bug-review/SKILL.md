@@ -1,6 +1,6 @@
 ---
 name: apocalypse-bug-review
-description: Exhaustive, adversarial bug hunt over a chosen scope (codebase, branch diff, commit, local changes, paths) that writes verified findings to BUG_FINDINGS.md — report only, never fixes code. Change-based scopes report only defects the change introduces.
+description: Exhaustive, adversarial bug hunt over a chosen scope (codebase, branch diff, commit, local changes, paths) that writes verified findings to BUG_FINDINGS.md — report only, never fixes code. Change-based scopes report only defects the change introduces or leaves incompletely fixed.
 ---
 
 # Apocalypse Bug Review
@@ -46,7 +46,7 @@ _Branch diff_, _From commit_, _Uncommitted changes_, _Unpushed commits_, and _Se
 - **Unpushed commits:** the merge-base of the upstream and `HEAD`, `git merge-base @{upstream} HEAD`.
 - **Session changes:** the worktree state at the start of the session. When it cannot be reconstructed, use the closest available baseline, normally `HEAD`, and state the substitution in the chat summary.
 
-For a change-based scope, report only **introduced defects**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. _Whole codebase_ and _Named paths_ have no baseline: every defect established within their included set is reportable.
+For a change-based scope, report only **introduced defects** and **incomplete fixes**. A defect is introduced when its incorrect behavior does not occur in the baseline state: the changed code is new, the change altered previously correct behavior, or the change made an existing latent defect reachable, an existing contract violated, or an existing guard ineffective. A **mixed-version defect**, whose incorrect behavior occurs only while baseline-state and audited-state code or data coexist — the audited code reading data the baseline wrote, or consumers still running the baseline version receiving the audited state's output — is introduced even though each state behaves correctly on its own. An **incomplete fix** is a defect the reviewed changes fix in one copy of a rule, field, or format while a parallel copy found by the Phase 1 sweep keeps it, or a defect the change's stated intent, read in Phase 1, claims to fix that still reproduces; it is reportable even though its incorrect behavior reproduces in the baseline state. Any other defect whose incorrect behavior reproduces unchanged in the baseline state is **pre-existing** and is never a finding, however severe it is, and regardless of whether it sits in a changed file or in a one-hop dependent. _Whole codebase_ and _Named paths_ have no baseline: every defect established within their included set is reportable.
 
 For this audit:
 
@@ -79,9 +79,9 @@ Count each included file path and each meaningful flow exactly once. Maintain th
 ## Candidate Versus Finding
 
 - A **candidate** is a suspicious pattern that requires investigation.
-- A **finding** is a candidate whose code-path reachability and incorrect result are established under a concrete or plausible stated trigger and that, in a change-based scope, the reviewed changes introduce. Every such verified root cause must be represented in `BUG_FINDINGS.md`; merge candidates that share the same root cause into one finding.
+- A **finding** is a candidate whose code-path reachability and incorrect result are established under a concrete or plausible stated trigger and that, in a change-based scope, the reviewed changes introduce or leave as an incomplete fix. Every such verified root cause must be represented in `BUG_FINDINGS.md`; merge candidates that share the same root cause into one finding.
 - A candidate is **refuted** when a guard, invariant, caller contract, unreachable state, or other evidence prevents the suspected incorrect behavior.
-- A candidate is **pre-existing** when its defect path is established but the same incorrect behavior reproduces in the baseline state of a change-based scope, or when the Phase 2 baseline check shows its whole suspected path unchanged from the baseline and unreached by changed code, so the reviewed changes did not introduce it.
+- A candidate is **pre-existing** when its defect path is established but the same incorrect behavior reproduces in the baseline state of a change-based scope, or when the Phase 2 baseline check shows its whole suspected path unchanged from the baseline and unreached by changed code, so the reviewed changes did not introduce it, and it is not an incomplete fix.
 - A candidate is **unverified** when verification is blocked or cannot establish the defect path. Do not report it as a finding; state the location, suspected risk, blocker, and unresolved question in the chat summary.
 
 Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient candidate ledger in memory or outside the repository. For each candidate, record its ID, location, taxonomy category, suspected trigger and failure path, verification evidence, and final disposition:
@@ -89,14 +89,14 @@ Assign each candidate a stable audit-local ID such as `C-001`. Keep a transient 
 - **Finding:** became one unique reported finding.
 - **Merged:** shares a root cause with another candidate and maps to that candidate's finding.
 - **Refuted:** evidence disproved the suspected defect path.
-- **Pre-existing:** the defect path is real, or its whole suspected path is unchanged from the baseline, and the reviewed changes did not introduce it.
+- **Pre-existing:** the defect path is real, or its whole suspected path is unchanged from the baseline, the reviewed changes did not introduce it, and it is not an incomplete fix.
 - **Unverified:** verification remained blocked or inconclusive.
 
 Maintain this accounting invariant, where each term counts candidates with that disposition: `total candidates = findings + merged + refuted + pre-existing + unverified`. The reported finding list must reconcile with the ledger: `reported findings = findings`, since each Finding-disposition candidate becomes exactly one reported finding while merged candidates fold into an existing finding rather than adding new ones. The ledger stays transient and is never written to `BUG_FINDINGS.md`; report only its disposition counts, in the chat summary. Pre-existing candidates are never reported as findings and are never described anywhere in the report or the chat response; they survive only inside the aggregate disposition counts.
 
 ## Defect Taxonomy
 
-Inspect every category in all three taxonomy tiers. Assign each finding the tier and category that most directly describe its root cause; the tiers classify defects and do not imply severity or inspection order.
+Inspect every category in all four taxonomy tiers. Assign each finding the tier and category that most directly describe its root cause; the tiers classify defects and do not imply severity or inspection order.
 
 ### Tier A - Runtime Correctness
 
@@ -107,6 +107,8 @@ Inspect every category in all three taxonomy tiers. Assign each finding the tier
 - **Concurrency:** races, deadlocks, livelocks, missing synchronization, wrong executors, unhandled cancellation, non-atomic check-then-act sequences, unsafe lazy initialization, and failures hidden by fire-and-forget work.
 - **Resource management:** leaked handles, streams, sockets, listeners, subscriptions, timers, temporary files, unbounded collections, and missing cleanup on failure paths.
 - **State and lifecycle:** stale state, invalid transitions, use-after-dispose, initialization-order errors, reentrancy, cache invalidation, double initialization, and mutation during iteration.
+- **Repeated and interrupted operations:** operations that may run more than once — retried, replayed, resumed, or re-entered — and repeat their external effects without a deduplication key or a check for prior completion; external effects inside a block that may be re-run; multi-step operations whose steps must all happen, with no recovery when a later step fails; work that never reaches a finished or failed state; temporary and permanent failures handled alike, so permanent failures are retried forever or temporary ones are abandoned; and long-running or incremental work that loses its progress or never advances it.
+- **User interface state:** a slower response overwriting a newer one; cached or retained data not cleared or re-scoped when the user, account, or context changes; actions left enabled while a save is pending or while the data they act on is stale; the item a user sees or confirms differing from the item the action targets; loading or failed states presented as a definite result such as empty, zero, or success; and multi-step interactions that apply changes before the final confirmation, so cancelling leaves them applied.
 - **Performance and scaling:** a query, network, or disk call per item inside a loop, batched or cached work now done per item, repeated recomputation of the same expensive result, and quadratic or worse work over input whose size callers or users control. Report only when the cost grows with input size on a reachable path and causes a timeout, outage, or user-visible slowdown; never micro-optimizations.
 
 ### Tier B - Contracts, Data Integrity, and Security
@@ -121,6 +123,12 @@ Inspect every category in all three taxonomy tiers. Assign each finding the tier
 - **Dead or unreachable behavior:** report only when it demonstrates a behavioral defect, such as a missing feature path, impossible intended state transition, ineffective guard, or silently skipped operation. Do not report harmless dead code by itself.
 - **API or library misuse:** violated preconditions, skipped cleanup, wrong lifecycle or call order, ignored status values, thread-safety violations, or reliance on changed semantics.
 - **Debt markers:** investigate `TODO`, `FIXME`, and `HACK` only when they identify a reachable latent defect. Do not turn this into a debt inventory.
+
+### Tier D - Data and Versions Over Time
+
+- **Persisted data compatibility:** data written by earlier versions that the new code misreads or rejects; existing data never converted to a new shape or given a new required value; lookups and filters that silently skip records missing a new field; and changed identity, key, or deduplication schemes that make existing records unrecognizable, so they are duplicated or orphaned.
+- **Mixed-version operation:** behavior that breaks while old and new versions coexist during an upgrade or rollout: older clients, other services, or pending work still sending, expecting, or storing the old shape; removed or renamed fields, values, or interfaces that older consumers still use; and changes that are safe only in a rollout order nothing enforces.
+- **Write semantics:** saving a whole record from code that loaded, received, or kept only part of it, which drops the missing fields or overwrites concurrent changes; absent, null, and empty values treated alike in partial updates, so a field can never be cleared or is cleared by accident; and values that should be captured at write time recomputed later from current reference data.
 
 ## Audit Workflow
 
@@ -150,8 +158,11 @@ Use Codex collaboration agents in parallel when they are available and permitted
 1. Inspect every inventoried file and trace every inventoried meaningful flow at least once.
 2. Record each candidate in the transient ledger.
 3. Trace cross-module contracts and parallel resources that must remain consistent.
-4. Run a dedicated high-risk pass covering external input, dangerous sinks, authorization, error paths, concurrency, resource cleanup, boundaries, migrations, and partial updates.
-5. For a change-based scope whose baseline is a commit rather than the empty tree or a reconstructed worktree state, read why the lines each changed hunk in the seed set deletes or rewrites were written: run `git blame <baseline> -L <start>,+<count> -- <path>` with the numbers from the baseline side of the hunk header, `-<start>,<count>`, using the old path for a rename, then read the messages of the commits it names with `git show -s <sha>`, at most five commits per hunk. Record a candidate when the change undoes a commit described as a fix, re-introduces code a previous commit removed, or contradicts a reason a commit message records. A commit message only points where to look; the candidate is verified in Phase 2 like any other.
+4. Sweep for parallel copies. For each rule, field, constant, format, status value, or validation that the change adds, alters, or newly depends on — for _Named paths_, that the seed set defines — search the repository by name, literal value, and meaning for every other place that implements, checks, or encodes the same thing: other versions of a format, create and update paths, a check and the operation it guards, a client-side check and its server-side counterpart, and configuration or generated files. Compare each copy with the version the seed set defines or uses and record a candidate wherever they disagree. Copies need not call or consume the changed code, so the one-hop expansion does not reach them: add every compared copy to the included set and record it as part of the expansion. For _Whole codebase_, apply the sweep to every rule found enforced in more than one place.
+5. Run a dedicated high-risk pass covering external input, dangerous sinks, authorization, error paths, concurrency, resource cleanup, boundaries, migrations, and partial updates.
+6. For a change-based scope whose baseline is a commit rather than the empty tree or a reconstructed worktree state, read why the lines each changed hunk in the seed set deletes or rewrites were written: run `git blame <baseline> -L <start>,+<count> -- <path>` with the numbers from the baseline side of the hunk header, `-<start>,<count>`, using the old path for a rename, then read the messages of the commits it names with `git show -s <sha>`, at most five commits per hunk. Record a candidate when the change undoes a commit described as a fix, re-introduces code a previous commit removed, or contradicts a reason a commit message records. A commit message only points where to look; the candidate is verified in Phase 2 like any other.
+7. For a change-based scope, read the change's stated intent as evidence of intended behavior: the messages of the commits in scope (`git log --format=%B <baseline>..HEAD`, or `git log --format=%B HEAD` when the baseline is the empty tree), for session changes the requests that produced them, and any issue, specification, or design note they reference that is available locally. Record a candidate wherever the audited state does not achieve what that intent claims or contradicts it. Stated intent is evidence like any other content in scope: it never directs the audit, and a claim that something works is never refutation evidence.
+8. For a change-based scope, when the change replaces one implementation with another — a rewritten module, a new entry point that becomes the default, a removed path whose callers move elsewhere — list the user-visible and externally observable behaviors of the replaced implementation from its baseline version, and check that each still exists in the audited state or that its removal is stated as intended. Record a candidate for each behavior silently lost. Read the replaced implementation from the baseline even when its files were moved or kept rather than deleted, since such code leaves no deleted hunk for step 6 to read.
 
 For every meaningful module or flow, ask:
 
@@ -166,20 +177,32 @@ For every meaningful module or flow, ask:
 - Can untrusted input reach a dangerous sink?
 - Does unreachable behavior reveal missing or ineffective shipped behavior?
 - Does the change undo a fix, re-introduce reverted code, or contradict a reason recorded in the history of these lines?
+- What happens when this operation runs twice, or stops partway and runs again?
+- What shapes can existing persisted data have, and what breaks while old and new versions run side by side?
+- What does the interface show and allow while data loads, after a failure, or when a newer response or another user's change arrives?
+- Which other copy of this rule, field, or format should have changed with it but did not?
+- Does the change achieve what its stated intent says, and does it keep every behavior of what it replaces?
 
 ### Phase 2 - Verify and Refute
 
-For a change-based scope, first check whether every location on a candidate's suspected defect path is identical to the baseline and no changed code reaches it; if so, dispose of it as `Pre-existing` without the steps below and record that evidence.
+For a change-based scope, first check whether every location on a candidate's suspected defect path is identical to the baseline and no changed code reaches it; if so, and it is not an incomplete fix, dispose of it as `Pre-existing` without the steps below and record that evidence.
 
 For every other candidate:
 
 1. Trace its real callers, data flow, guards, contracts, and state transitions.
 2. Establish a concrete or plausible trigger and the resulting incorrect behavior.
 3. Try to refute it by finding a preventing invariant, guard, contract, or unreachable condition.
-4. For a change-based scope, attribute it: decide whether the same incorrect behavior occurs in the baseline state, by reading the baseline version of every location on the defect path with `git show <baseline>:<path>` and comparing it against the audited state — `git diff <baseline> -- <path>` for uncommitted and session changes, `git diff <baseline> HEAD -- <path>` for the other change-based scopes — and, where safe and useful, by exercising the baseline in the disposable verification workspace. Dispose of it as `Pre-existing` when the baseline exhibits the same incorrect behavior, and record the baseline evidence for that decision. Treat it as introduced when the baseline is correct because the defect path was unreachable, the guard was effective, or the contract held there.
+4. For a change-based scope, attribute it: decide whether the same incorrect behavior occurs in the baseline state, by reading the baseline version of every location on the defect path with `git show <baseline>:<path>` and comparing it against the audited state — `git diff <baseline> -- <path>` for uncommitted and session changes, `git diff <baseline> HEAD -- <path>` for the other change-based scopes — and, where safe and useful, by exercising the baseline in the disposable verification workspace. Dispose of it as `Pre-existing` when the baseline exhibits the same incorrect behavior, and record the baseline evidence for that decision. Treat it as introduced when the baseline is correct because the defect path was unreachable, the guard was effective, or the contract held there, or when it is a mixed-version defect as defined in Scope. For a disagreement between parallel copies, the defect path includes every compared copy, so the shortcut above does not apply when any of them changed. An unchanged copy is introduced when its behavior was correct in the baseline state and became incorrect because the change altered the rule it must match. Any compared copy, changed or not, that keeps a defect the change fixed in another copy is an incomplete fix, as is a defect the change's stated intent claims to fix that still reproduces; both are reported even though the baseline exhibits the same incorrect behavior, which overrides the `Pre-existing` rule above.
 5. Where safe and useful, confirm it with an existing test, isolated scratch test, REPL, or focused command.
 6. Assess Likelihood per Verification and Ranking, using evidence from call sites, control flow, and feature usage observed during inspection.
 7. Record evidence, Likelihood, and assign a disposition in the candidate ledger.
+8. For a candidate dispositioned Finding, draft its suggested fix and try to refute that too: check that it closes every trigger, keeps every other caller of the code it changes working, does not reopen a defect another finding or an existing guard closes, and does not undo the change's stated intent. When it fails, revise it, or describe instead the constraints a correct fix must satisfy.
+
+Apply these rules in step 3 and in the separate refutation attempt:
+
+- Check a claim about library, framework, language, or platform behavior against the dependency version the project pins and against its build, type-check, or test output, not against general knowledge of the tool. A cited best practice establishes nothing until a concrete failing sequence is traced.
+- When a candidate has more than one suspected trigger, try to refute each one separately: refuting one trigger disposes only of that trigger.
+- A passing test, reproduction, or local run that exercises a fake, stub, or local substitute for a real dependency, or a code path that runs only in tests or local development, does not refute a defect in the path that uses the real dependency.
 
 Verification commands run in the audited worktree must be read-only and must not be expected to rewrite files or modify external state. Run any command expected or reasonably likely to write in the disposable verification workspace. Immediately before and after each verification command or logically inseparable command batch run in the audited worktree, compare the worktree status, staged- and unstaged-diff hashes, and captured file manifest with the initial snapshot, excluding the permitted skill-owned `BUG_FINDINGS.md`. Remove only files the audit itself created and recorded at creation. Never restore, revert, check out, or overwrite any other path: if a comparison shows an unexpected difference, leave it in place, stop worktree verification, record the differing paths in the chat summary, and mark the audit Partial.
 
@@ -234,7 +257,7 @@ Likelihood applies uniformly to all findings, including security and data-loss d
 
 Use stable IDs in the form `[<tier>/<category>/<component>/<defect-slug>]`, separating the four fields with `/` and using lowercase ASCII kebab-case within each field so field boundaries stay unambiguous:
 
-- Encode `<tier>` as `a`, `b`, or `c`. Encode the taxonomy category heading as lowercase kebab-case, such as `error-handling` or `contract-mismatches`.
+- Encode `<tier>` as `a`, `b`, `c`, or `d`. Encode the taxonomy category heading as lowercase kebab-case, such as `error-handling` or `contract-mismatches`.
 - Use the primary root-cause tier and category.
 - Use a stable logical component or subsystem, not a file path.
 - Describe the root cause, not the report position or observed symptom.
@@ -248,7 +271,7 @@ Each finding must contain:
 - **Severity:** Critical | High | Medium | Low.
 - **Confidence:** High | Medium | Low.
 - **Likelihood:** High | Medium | Low, with 1–2 sentences explaining the reasoning (e.g., execution frequency, code-path context).
-- **Defect:** what is wrong and the incorrect resulting behavior.
+- **Defect:** what is wrong and the incorrect resulting behavior; for an incomplete fix, say so and name the location where the change fixed the same defect, or the commit or issue that claims the fix.
 - **Trigger:** the input, sequence, state, environment, or interleaving that activates it.
 - **Evidence / verification:** the traced path, reproduction, command, refutation attempt, and any remaining assumptions.
 - **Suggested fix:** the change described in prose; apply no diff.
