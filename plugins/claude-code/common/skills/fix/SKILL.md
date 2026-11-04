@@ -1,16 +1,17 @@
 ---
 name: fix
-description: Takes one claim about the code — an entry from the BUG_FINDINGS.md report written by apocalypse-bug-review (by ID, the next one in the report, or the pasted text of a whole entry) or a review comment on a GitHub pull request (by its link) — re-checks it against the current code, gives a verdict and a fix plan, and stops for approval. On approval, proves a defect fix with a test that fails before and passes after, makes the change, and runs the covering tests and delta-review; for a finding, only then deletes the entry and refreshes the report's Summary. For a review comment, also gives a one-word bottom line — fix, defer, ignore, or ask — and, when it recommends not acting, a short reply to paste. Never commits, pushes, or posts to GitHub.
-argument-hint: "[<id> | next | <entry text> | <PR comment link>]"
+description: Takes one claim about the code — an entry from the BUG_FINDINGS.md report written by apocalypse-bug-review (by ID, the next one in the report, or the pasted text of a whole entry), a review comment on a GitHub pull request (by its link), or a Firebase Crashlytics issue (by its console link, read through Claude in Chrome) — re-checks it against the current code, gives a verdict and a fix plan, and stops for approval. On approval, proves a defect fix with a test that fails before and passes after, makes the change, and runs the covering tests and delta-review; for a finding, only then deletes the entry and refreshes the report's Summary. For a review comment, also gives a one-word bottom line — fix, defer, ignore, or ask — and, when it recommends not acting, a short reply to paste. Never commits, pushes, posts to GitHub, or changes anything in Crashlytics.
+argument-hint: "[<id> | next | <entry text> | <PR comment link> | <Crashlytics issue link>]"
 disable-model-invocation: true
 ---
 
 # Fix
 
-Fix one claim about the code: check that it is real, agree the fix with me, prove it, and close the claim only once the fix holds. A claim comes from one of two sources, and each has a reference file that says how to read it, what to ask, and how to close it:
+Fix one claim about the code: check that it is real, agree the fix with me, prove it, and close the claim only once the fix holds. A claim comes from one of three sources, and each has a reference file that says how to read it, what to ask, and how to close it:
 
 - **A finding** from the `BUG_FINDINGS.md` report: `${CLAUDE_SKILL_DIR}/references/finding.md`.
 - **A review comment** on a GitHub pull request: `${CLAUDE_SKILL_DIR}/references/pr-comment.md`.
+- **A crash report** from Firebase Crashlytics: `${CLAUDE_SKILL_DIR}/references/crash-report.md`.
 
 Two rules hold throughout:
 
@@ -21,14 +22,14 @@ Never commit, push, stash, revert, or check out anything, and leave my existing 
 
 ## 1. Pick the claim
 
-When the argument is a single `github.com` link, the claim is a review comment; otherwise — no argument, `next`, an ID, or pasted text — it is a finding. Read that source's reference file in full and follow its **Start** section: it sets the claim, its locations, and the evidence that came with it, or stops.
+When the argument is a single `github.com` link, the claim is a review comment; when it is a single `console.firebase.google.com` link, a crash report; otherwise — no argument, `next`, an ID, or pasted text — it is a finding. Read that source's reference file in full and follow its **Start** section: it sets the claim, its locations, and the evidence that came with it, or stops.
 
 ## 2. Assess
 
 Change nothing in this step: read code, search, and run read-only `git` and `gh` commands only.
 
 - Read `CLAUDE.md` or `AGENTS.md`, whichever the project has, for conventions. Then read the claim's locations and evidence. Line numbers may have moved since the claim was written: find the code by what the claim describes, not only by its line.
-- Decide the kind of claim. A **defect** claim says the code does something wrong: a crash, bad data, a broken contract, a security hole. A **suggestion** says the code works but could be better: naming, structure, readability, docs, another approach. A finding is always a defect claim.
+- Decide the kind of claim. A **defect** claim says the code does something wrong: a crash, bad data, a broken contract, a security hole. A **suggestion** says the code works but could be better: naming, structure, readability, docs, another approach. A finding or a crash report is always a defect claim.
 - Trace the claim through the current code and settle on one verdict for its kind:
   - **Defect claim:**
     - **Confirmed:** the defect is reachable and produces the wrong result the claim describes.
