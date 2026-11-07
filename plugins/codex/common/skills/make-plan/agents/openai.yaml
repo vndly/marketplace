@@ -1,0 +1,7 @@
+interface:
+  display_name: "Make Plan"
+  short_description: "Write the session's plan to checkbox plan files"
+  default_prompt: "Use $make-plan to write the plan settled in this session to files in the project root."
+
+policy:
+  allow_implicit_invocation: false
