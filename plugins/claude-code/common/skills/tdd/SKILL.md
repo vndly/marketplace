@@ -17,11 +17,9 @@ See `${CLAUDE_SKILL_DIR}/references/tests.md` for examples.
 
 A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
 
-**Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with me. No test is written at an unconfirmed seam. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
+**Choose the seams yourself, and write them down first.** Before writing any test, list the seams under test, each with a one-line note on what it catches and what it misses. Don't ask me: pick the seams that cover the critical paths and complex logic, not every edge case, and name them in your final report so I can review them. No test is written at a seam that isn't on the list.
 
-Ask with `AskUserQuestion`: "What's the public interface, and which seams should we test?" Offer the proposed seams as options, the recommended one first, each with a one-line note on what it catches and what it misses. Always leave the free-text choice so I can name my own.
-
-If a cycle reveals a seam that was not agreed, stop and confirm it the same way before writing a test there.
+If a cycle reveals a new seam, add it to the list with its note before writing a test there.
 
 ## Anti-patterns
 

@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, or wants integration tests. For a reported defect (a bug finding, a PR review comment, a crash report), the fix skill is the entry point.
+description: Test-driven development. Use when the user wants to build features, fix bugs, or wants integration tests. For a reported defect (a bug finding, a PR review comment, a crash report), the fix skill is the entry point.
 ---
 
 # Test-Driven Development
@@ -17,11 +17,9 @@ See `references/tests.md`, next to this file, for examples.
 
 A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
 
-**Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with the user. No test is written at an unconfirmed seam. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
+**Choose the seams yourself, and write them down first.** Before writing any test, list the seams under test, each with a one-line note on what it catches and what it misses. Don't ask the user: pick the seams that cover the critical paths and complex logic, not every edge case, and name them in your final report so the user can review them. No test is written at a seam that isn't on the list.
 
-Ask with `request_user_input`: "What's the public interface, and which seams should we test?" Offer the proposed seams as options, the recommended one first, each with a one-line note on what it catches and what it misses. Do not add an `Other` option; the tool supplies the free-form choice. When `request_user_input` is unavailable, ask the same question as a numbered message, allow a free-form answer, then end the turn and wait.
-
-If a cycle reveals a seam that was not agreed, stop and confirm it the same way before writing a test there.
+If a cycle reveals a new seam, add it to the list with its note before writing a test there.
 
 ## Anti-patterns
 
