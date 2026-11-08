@@ -7,6 +7,14 @@ description: Test-driven development. Use when the user wants to build features,
 
 TDD is the red → green loop. This skill is the reference that makes that loop produce tests worth keeping: what a good test is, where tests go, the anti-patterns, and the rules of the loop. Every section applies on every cycle: consult them before and during the loop, not after.
 
+## Explore first
+
+Before choosing seams or writing the first test, read what the project already has:
+
+- The project instructions file (`CLAUDE.md` or `AGENTS.md`, whichever it has), for conventions.
+- The existing tests: framework, location, naming, helpers, and how they are run. Follow those patterns.
+- The code you will change and what depends on it: its public interface, structure, and place in the architecture.
+
 ## What a good test is
 
 Tests verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't. A good test reads like a specification: "user can checkout with valid cart" tells you exactly what capability exists, and it survives refactors because it doesn't care about internal structure.
