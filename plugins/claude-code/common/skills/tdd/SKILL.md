@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, or wants integration tests. For a reported defect (a bug finding, a PR review comment, a crash report), the fix skill is the entry point.
+description: Test-driven development. Use when the user wants to build features, fix bugs, or wants integration tests. For a reported defect (a bug finding, a PR review comment, a crash report), the fix skill is the entry point.
 ---
 
 # Test-Driven Development
