@@ -47,18 +47,18 @@ Build the prompt: `cat '${CLAUDE_SKILL_DIR}/references/reviewer.md' '<run>/brief
 Then start every reviewer you can in a **single message**, each as its own Bash call with `run_in_background: true`, so they run at the same time:
 
 ```bash
-cd '<root>' && timeout 960 codex exec --ignore-user-config --disable apps -c 'approval_policy="never"' --sandbox read-only --skip-git-repo-check --ephemeral --output-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' -o '<run>/codex.json' - < '<run>/prompt.md' > '<run>/codex.log' 2>&1
+cd '<root>' && timeout 960 codex exec --ignore-user-config --disable apps -c 'approval_policy="never"' -m gpt-6.1-sol -c 'model_reasoning_effort="high"' --sandbox read-only --skip-git-repo-check --ephemeral --output-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' -o '<run>/codex.json' - < '<run>/prompt.md' > '<run>/codex.log' 2>&1
 ```
 
 ```bash
-cd '<root>' && timeout 960 agy --print "$(cat '<run>/prompt.md')" --sandbox --settings '{"permissions":{"deny":["command(*)","write_file(*)","mcp(*)","execute_url(*)"]}}' --print-timeout 900s --output-format json --json-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' > '<run>/antigravity.json' 2> '<run>/antigravity.log'
+cd '<root>' && timeout 960 agy --print "$(cat '<run>/prompt.md')" --model gemini-4-hydrogen-xhigh --sandbox --settings '{"permissions":{"deny":["command(*)","write_file(*)","mcp(*)","execute_url(*)"]}}' --print-timeout 900s --output-format json --json-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' > '<run>/antigravity.json' 2> '<run>/antigravity.log'
 ```
 
 - These flags are what keeps the reviewers read-only, and each one has been tested:
   - **Codex**: its read-only sandbox blocks every file write from the shell and from its own edit tool. MCP servers run outside that sandbox, and overriding them with `-c` does not remove them, so `--ignore-user-config` skips the config file that declares them and `--disable apps` turns off connectors. Login still works without the config file.
   - **Antigravity**: its sandbox leaves the shell writable inside a trusted workspace, and its plan mode does not stop its file tools, so neither one is a safeguard. The deny rule is: it blocks the shell, file writes, MCP tools, and browser actions, which leaves Antigravity reading files but not searching them.
   - Never remove or loosen any of these flags, and never add `--dangerously-skip-permissions`, a writable sandbox, or `--disable-slash-commands`.
-- No model or effort is set. Antigravity uses its configured default; Codex, which runs without its config file, uses its built-in default.
+- The models are pinned: Codex runs `gpt-6.1-sol` at `high` effort, because without its config file it would fall back to `low`; Antigravity runs `gemini-4-hydrogen-xhigh`. Never switch Antigravity to one of the Claude models it also offers: the point is an opinion from a different model.
 - Wait until every reviewer you started has finished; you are notified as each one exits. Don't read their output while they run.
 
 ## 5. Check the answers
