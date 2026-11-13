@@ -16,7 +16,7 @@ One plugin, `common`, published for three tools. Each tool has its own copy of t
   - Frontmatter: drop `argument-hint`; the description may be reworded for the tool.
   - Question tool: `AskUserQuestion` becomes `request_user_input` (Codex) or `ask_question` (Antigravity), with a numbered-message fallback when the tool is unavailable.
   - Codex only: each user-invoked skill has `agents/openai.yaml` (display name, short description, default prompt, `allow_implicit_invocation`). Create or update it when the skill changes.
-- Claude-only skills stay Claude-only: `youtube-mp3`, `youtube-mp4`, `mp3-tags` (they depend on `bin/`). `frontend-design` exists only in the Codex and Antigravity copies.
+- Claude-only skills stay Claude-only: `youtube-mp3`, `youtube-mp4`, `mp3-tags` (they depend on `bin/`), and `second-opinion` (it reads a Claude Code session and asks the Codex and Antigravity CLIs to review it). `frontend-design` exists only in the Codex and Antigravity copies.
 - After mirroring, diff the three skill folders (`diff -rq`) and confirm every remaining difference is one of the adaptations above.
 
 ## Versions

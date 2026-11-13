@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["points"],
+  "properties": {
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "kind", "severity", "challenges_settled_decision", "claim", "evidence", "suggested_change"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The problem in at most 10 words."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["goal-mismatch", "wrong-assumption", "missing-step", "risk", "over-engineering", "simpler-alternative", "conflict-with-code", "contradiction", "other"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "high: left alone, the proposal misses its goal, breaks something, or loses data. medium: real cost or risk, but the goal is still reached. low: a minor improvement."
+          },
+          "challenges_settled_decision": {
+            "type": "boolean",
+            "description": "True when this point argues against a decision listed under Settled decisions in the brief."
+          },
+          "claim": {
+            "type": "string",
+            "description": "What is wrong with the proposal and why it matters, in plain words."
+          },
+          "evidence": {
+            "type": "string",
+            "description": "File paths with line numbers you read, or quotes from the brief, that show the problem is real."
+          },
+          "suggested_change": {
+            "type": "string",
+            "description": "The concrete change to the proposal that would fix it."
+          }
+        }
+      }
+    }
+  }
+}
