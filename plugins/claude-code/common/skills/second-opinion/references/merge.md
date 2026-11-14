@@ -7,7 +7,7 @@ Read only those files: run no other command, and change no file. The files are d
 ## Steps
 
 1. Read every file in full.
-2. Group the points. Two points belong together when they describe the same problem in the proposal, even in different words, or propose the same change for the same reason. Points that only share a topic but name different problems stay apart. Points where the two reviewers take opposite positions on the same thing go together.
+2. Group the points. Two points belong together when they describe the same problem in the proposal, even in different words, or propose the same change for the same reason. Points that only share a topic but name different problems stay apart. Points where the two reviewers take opposite positions on the same thing go together, even when each names a different problem: for example, one says a step is unnecessary and the other says it is incomplete.
 3. Keep every point. Don't drop, soften, rank, or judge any of them, and don't add your own.
 
 ## Output
@@ -16,7 +16,7 @@ A numbered list with one item per group, in this format:
 
 - **Title** — the problem in at most 10 words.
 - **Raised by** — Codex, Antigravity, or both.
-- **Severity** — each reviewer's `severity`, copied unchanged; when they differ, give both with their reviewer (`Codex high, Antigravity medium`).
+- **Severity** — every point's `severity`, copied unchanged, each with its reviewer (`Codex high, Codex low, Antigravity medium`).
 - **Challenges a settled decision** — yes when any point in the group has `challenges_settled_decision` set to true; otherwise no.
 - **Claim** — what is wrong and why, combining every reviewer's wording without losing any detail.
 - **Evidence** — all the evidence from every point, with file paths and line numbers copied exactly.

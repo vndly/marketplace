@@ -8,15 +8,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["title", "kind", "severity", "challenges_settled_decision", "claim", "evidence", "suggested_change"],
+        "required": ["title", "severity", "challenges_settled_decision", "claim", "evidence", "suggested_change"],
         "properties": {
           "title": {
             "type": "string",
             "description": "The problem in at most 10 words."
-          },
-          "kind": {
-            "type": "string",
-            "enum": ["goal-mismatch", "wrong-assumption", "missing-step", "risk", "over-engineering", "simpler-alternative", "conflict-with-code", "contradiction", "other"]
           },
           "severity": {
             "type": "string",
