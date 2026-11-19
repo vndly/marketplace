@@ -19,6 +19,9 @@ Report and stop. Never change the proposal, the code, or any file outside this r
 
 - Run `command -v codex agy`. If one is missing, continue with the other and note it for the report. If both are missing, say neither the `codex` nor the `agy` command is installed, and stop.
 - Run `command -v jq timeout`. Without `jq`, say it is needed to read the answers, and stop. Without `timeout` (stock macOS), drop the `timeout 960` prefix from the commands in step 4.
+- Codex runs without its config file (step 4), so pass it the model and reasoning effort set there. Read the file's top-level settings with `sed -nE "/^\[/q; s/^(model|model_reasoning_effort|model_provider|profile)[[:space:]]*=[[:space:]]*[\"']([^\"']*)[\"'].*/\1=\2/p" "${CODEX_HOME:-$HOME/.codex}/config.toml"`; below, `<model>` and `<effort>` are the `model` and `model_reasoning_effort` values. Skip Codex and note why for the report if either is missing, if `profile` is set, or if `model_provider` is set to anything but `openai`: the run can apply neither a profile nor a custom provider.
+- Antigravity takes its model, effort included, from its own settings. Read it with `jq -r '.model // empty' ~/.gemini/antigravity-cli/settings.json`. If it names a Claude model, skip Antigravity and note it for the report: the point is an opinion from a different model.
+- If this leaves no reviewer, say why and stop.
 - The project root is `git rev-parse --show-toplevel`; outside a git repository, use the current folder. If that is my home folder or `/`, ask me which folder holds the project and use it instead; if I name none, say so and stop.
 - Create the run folder: `mktemp -d "${TMPDIR:-/tmp}/second-opinion.XXXXXX"`. Below, `<run>` is that folder and `<root>` the project root, both single-quoted in every command, with any `'` inside them written as `'\''`.
 
@@ -47,18 +50,18 @@ Build the prompt: `cat '${CLAUDE_SKILL_DIR}/references/reviewer.md' '<run>/brief
 Then start every reviewer you can in a **single message**, each as its own Bash call with `run_in_background: true`, so they run at the same time:
 
 ```bash
-cd '<root>' && timeout 960 codex exec --ignore-user-config --disable apps -c 'approval_policy="never"' -m gpt-6.1-sol -c 'model_reasoning_effort="xhigh"' --sandbox read-only --skip-git-repo-check --ephemeral --output-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' -o '<run>/codex.json' - < '<run>/prompt.md' > '<run>/codex.log' 2>&1
+cd '<root>' && timeout 960 codex exec --ignore-user-config --disable apps -c 'approval_policy="never"' -m '<model>' -c 'model_reasoning_effort="<effort>"' --sandbox read-only --skip-git-repo-check --ephemeral --output-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' -o '<run>/codex.json' - < '<run>/prompt.md' > '<run>/codex.log' 2>&1
 ```
 
 ```bash
-cd '<root>' && timeout 960 agy --print "$(cat '<run>/prompt.md')" --model gemini-4-hydrogen-xhigh --sandbox --settings '{"permissions":{"deny":["command(*)","write_file(*)","mcp(*)","execute_url(*)","read_url(*)"]}}' --print-timeout 900s --output-format json --json-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' > '<run>/antigravity.json' 2> '<run>/antigravity.log'
+cd '<root>' && timeout 960 agy --print "$(cat '<run>/prompt.md')" --sandbox --settings '{"permissions":{"deny":["command(*)","write_file(*)","mcp(*)","execute_url(*)","read_url(*)"]}}' --print-timeout 900s --output-format json --json-schema '${CLAUDE_SKILL_DIR}/references/answer-schema.json' > '<run>/antigravity.json' 2> '<run>/antigravity.log'
 ```
 
 - These flags are what keeps the reviewers read-only, and each one has been tested:
   - **Codex**: its read-only sandbox blocks every file write from the shell and from its own edit tool. MCP servers run outside that sandbox, and overriding them with `-c` does not remove them, so `--ignore-user-config` skips the config file that declares them and `--disable apps` turns off connectors. Login still works without the config file.
   - **Antigravity**: its sandbox leaves the shell writable inside a trusted workspace, and its plan mode does not stop its file tools, so neither one is a safeguard. The deny rule is: it blocks the shell, file writes, MCP tools, browser actions, and URL fetches, which leaves Antigravity reading files (any file I can read, not only the project's) but not searching them.
   - Never remove or loosen any of these flags, and never add `--dangerously-skip-permissions`, a writable sandbox, or `--disable-slash-commands`.
-- The models and Codex's reasoning effort in the commands are pinned on purpose: without its config file Codex would fall back to `low` effort. Never switch Antigravity to one of the Claude models it also offers: the point is an opinion from a different model.
+- Each reviewer runs the model and effort set in its own settings, so changing them there needs no edit here. Never write a model or effort into these commands, and never add `--model` to Antigravity's. Codex needs `-m` and the effort passed in because it skips its config file: without them it would fall back to its built-in model and `low` effort.
 - `--print-timeout` must stay below the outer `timeout` so Antigravity stops and writes its own error first; change them together.
 - Wait until every reviewer you started has finished; you are notified as each one exits. Don't read their output while they run.
 
